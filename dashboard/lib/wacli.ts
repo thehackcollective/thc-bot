@@ -1,0 +1,89 @@
+import "server-only";
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileP = promisify(execFile);
+const BIN = process.env.WACLI_BIN || "wacli";
+
+function parse(stdout: string): any {
+  const t = stdout.trim();
+  if (!t) return null;
+  const v = JSON.parse(t);
+  if (v && v.success === false) throw new Error(v.error || "wacli error");
+  return v?.data ?? v;
+}
+
+async function run(args: string[], timeoutMs = 30000): Promise<any> {
+  const { stdout } = await execFileP(BIN, [...args, "--json"], {
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: timeoutMs,
+    env: { ...process.env, WACLI_READONLY: "1" },
+  });
+  return parse(stdout);
+}
+
+export interface WaGroup {
+  jid: string;
+  name: string;
+  lastMessageTs: string | null;
+  unread: number;
+  archived: boolean;
+}
+
+export async function listGroups(): Promise<WaGroup[]> {
+  const data = (await run(["chats", "list", "--limit", "1000"])) as any[];
+  return (Array.isArray(data) ? data : [])
+    .filter((c) => c.kind === "group" || String(c.jid || "").endsWith("@g.us"))
+    .map((c) => ({
+      jid: c.jid,
+      name: c.name && c.name !== c.jid ? c.name : "(unnamed group)",
+      lastMessageTs: c.last_message_ts && !c.last_message_ts.startsWith("0001") ? c.last_message_ts : null,
+      unread: c.unread_count || 0,
+      archived: !!c.archived,
+    }))
+    .sort((a, b) => (b.lastMessageTs || "").localeCompare(a.lastMessageTs || ""));
+}
+
+export interface WaStatus {
+  reachable: boolean;
+  totalMessages: number | null;
+  error?: string;
+}
+
+export async function status(): Promise<WaStatus> {
+  try {
+    // A cheap read proves the store + binary are usable.
+    const chats = (await run(["chats", "list", "--limit", "1"], 8000)) as any[];
+    let total: number | null = null;
+    try {
+      const d = await run(["store", "stats"], 8000);
+      total = d?.messages ?? d?.total_messages ?? null;
+    } catch {
+      /* store stats shape varies; ignore */
+    }
+    return { reachable: Array.isArray(chats), totalMessages: total };
+  } catch (e) {
+    return { reachable: false, totalMessages: null, error: String((e as Error).message) };
+  }
+}
+
+export async function messageCount(jid: string, sinceDays = 3650): Promise<number> {
+  const after = new Date(Date.now() - sinceDays * 86400_000).toISOString().slice(0, 10);
+  try {
+    const d = await run(["messages", "list", "--chat", jid, "--after", after, "--limit", "5000"], 20000);
+    const msgs = d?.messages ?? d ?? [];
+    return Array.isArray(msgs) ? msgs.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Fire-and-forget backfill; returns immediately. wacli holds the write lock while it runs. */
+export function backfill(jid: string, count = 200, requests = 3): void {
+  const child = spawn(
+    BIN,
+    ["history", "backfill", "--chat", jid, "--count", String(count), "--requests", String(requests), "--wait", "40s", "--idle-exit", "10s"],
+    { detached: true, stdio: "ignore" },
+  );
+  child.unref();
+}
