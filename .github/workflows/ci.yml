@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a fresh push doesn't queue behind stale ones.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Detect which parts of the repo are present so code-dependent jobs can skip
+  # cleanly on a bare tree (e.g. before the app lands) and light up once it does.
+  detect:
+    name: detect
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    outputs:
+      app: ${{ steps.f.outputs.app }}
+      dashboard: ${{ steps.f.outputs.dashboard }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: f
+        run: |
+          test -f package.json && echo "app=true" >> "$GITHUB_OUTPUT" || echo "app=false" >> "$GITHUB_OUTPUT"
+          test -f dashboard/package.json && echo "dashboard=true" >> "$GITHUB_OUTPUT" || echo "dashboard=false" >> "$GITHUB_OUTPUT"
+
+  oxlint:
+    name: oxlint
+    needs: detect
+    if: needs.detect.outputs.app == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # correctness rules fail the build; perf/suspicious stay advisory (see .oxlintrc.json).
+      # Only scan dashboard when it's present so this stays green on a bot-only tree.
+      - name: oxlint
+        run: npx --yes oxlint@1.74.0 src ${{ needs.detect.outputs.dashboard == 'true' && 'dashboard' || '' }}
+
+  ast-grep:
+    name: ast-grep
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Structural rules in ast-grep-rules/ (config: sgconfig.yml). Safe on a bare tree:
+      # with no source files it simply finds nothing.
+      - name: ast-grep scan
+        run: npx --yes --package @ast-grep/cli@0.44.1 ast-grep scan
+
+  typecheck:
+    name: typecheck
+    needs: detect
+    if: needs.detect.outputs.app == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          # Only the bot lock file is guaranteed here; dashboard has its own cached npm ci step.
+          cache-dependency-path: package-lock.json
+      - name: Install bot deps
+        run: npm ci
+      - name: Typecheck bot
+        run: npm run typecheck
+      - name: Install dashboard deps
+        if: needs.detect.outputs.dashboard == 'true'
+        run: npm ci
+        working-directory: dashboard
+      - name: Typecheck dashboard
+        if: needs.detect.outputs.dashboard == 'true'
+        run: npx tsc --noEmit
+        working-directory: dashboard
+
+  react-doctor:
+    name: react-doctor
+    needs: detect
+    if: needs.detect.outputs.dashboard == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install dashboard deps
+        run: npm ci
+        working-directory: dashboard
+      # --blocking error fails only on errors; warnings stay advisory.
+      - name: react-doctor
+        run: npx --yes react-doctor@0.8.1 . --no-telemetry --blocking error
+        working-directory: dashboard

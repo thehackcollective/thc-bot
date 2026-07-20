@@ -1,0 +1,19 @@
+id: no-focused-test
+language: typescript
+severity: error
+message: "Remove focused test (`.only`) so the whole suite runs in CI."
+rule:
+  any:
+    - pattern: describe.only($$$ARGS)
+    - pattern: it.only($$$ARGS)
+    - pattern: test.only($$$ARGS)
+---
+id: no-focused-test-tsx
+language: tsx
+severity: error
+message: "Remove focused test (`.only`) so the whole suite runs in CI."
+rule:
+  any:
+    - pattern: describe.only($$$ARGS)
+    - pattern: it.only($$$ARGS)
+    - pattern: test.only($$$ARGS)
