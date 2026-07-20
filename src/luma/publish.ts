@@ -67,6 +67,37 @@ async function clickButtonByText(page: any, text: string, last = false): Promise
 }
 
 /**
+ * Poll a browser-side predicate until it returns true or the timeout elapses.
+ * Returns whether the predicate became true. Used instead of fixed sleeps so a
+ * slow Luma round-trip doesn't trip a premature failure. The predicate must be
+ * self-contained (it is serialized and evaluated in the page).
+ */
+async function waitFor(
+  page: any,
+  predicate: () => boolean,
+  { timeoutMs = 15000, intervalMs = 300 }: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      if (await page.evaluate(predicate)) return true;
+    } catch {
+      /* transient (navigation / detached frame) — retry until the deadline */
+    }
+    if (Date.now() >= deadline) return false;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
+/** True while Luma's "Add Luma Event" dialog is still on screen (i.e. commit not done). */
+function addDialogOpen(): boolean {
+  const g = globalThis as any;
+  return Array.from(g.document.querySelectorAll("h1,h2,h3,div,span")).some(
+    (e: any) => e.childElementCount === 0 && e.textContent?.trim() === "Add Luma Event",
+  );
+}
+
+/**
  * Set a React-controlled input's value reliably: assign via the native setter and
  * dispatch input/change so React's onChange fires (a plain .value = x is ignored).
  */
@@ -126,8 +157,10 @@ export async function publishLead(lead: QueuedLead): Promise<string> {
     await fillReactInput(page, urlField.selector, lead.lumaUrl);
 
     // Stage: the small "+ Add" beside the input resolves the URL into a pending event card.
+    // Wait for that XHR to settle (network idle) rather than a fixed sleep, so a slow
+    // resolve doesn't leave the event unstaged before we commit.
     await clickButtonByText(page, "Add");
-    await new Promise((r) => setTimeout(r, 3500)); // wait for Luma to resolve the event
+    await page.waitForLoadState("networkidle").catch(() => {}); // wait for Luma to resolve the event
 
     if (DRY_RUN) {
       console.log(`[DRY_RUN] Staged "${lead.title}" (${lead.lumaUrl}) in the add-event dialog, not committing.`);
@@ -137,17 +170,13 @@ export async function publishLead(lead: QueuedLead): Promise<string> {
     // Commit: the dialog's primary "Add Event" button (last in the DOM) saves it to the calendar.
     await clickButtonByText(page, "Add Event", true);
     await page.waitForLoadState("networkidle").catch(() => {});
-    await new Promise((r) => setTimeout(r, 3000)); // let the commit settle
 
     // Success signal: the "Add Luma Event" dialog closes only when the commit lands.
-    // If it's still open, the add failed — throw so the lead stays 'approved' and can be retried.
-    const dialogStillOpen = await page.evaluate(() => {
-      const g = globalThis as any;
-      return Array.from(g.document.querySelectorAll("h1,h2,h3,div,span")).some(
-        (e: any) => e.childElementCount === 0 && e.textContent?.trim() === "Add Luma Event",
-      );
-    });
-    if (dialogStillOpen) {
+    // Poll for it (up to a generous timeout) instead of a fixed sleep, so a slow
+    // round-trip isn't misread as a failure. If it never closes the add failed —
+    // throw so the lead stays 'approved' and can be retried.
+    const committed = await waitFor(page, () => !addDialogOpen(), { timeoutMs: 15000 });
+    if (!committed) {
       throw new Error("Add-to-calendar did not complete (dialog still open). Event was not added.");
     }
 

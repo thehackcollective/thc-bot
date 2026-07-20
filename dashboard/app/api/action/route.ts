@@ -1,23 +1,8 @@
-import { spawn } from "node:child_process";
-import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { getLead, setStatus } from "@/lib/db";
+import { spawnPublish } from "@/lib/publish";
 
 export const dynamic = "force-dynamic";
-
-const BOT_ROOT = join(process.cwd(), "..");
-
-// Kick off the bot's Luma publisher for one lead (launches a browser via Stagehand).
-// Detached + non-blocking; the bot flips status to 'published' when it finishes.
-function spawnPublish(id: number) {
-  const child = spawn("npm", ["run", "publish", "--", String(id)], {
-    cwd: BOT_ROOT,
-    detached: true,
-    stdio: "ignore",
-    env: process.env,
-  });
-  child.unref();
-}
 
 export async function POST(req: Request) {
   try {
@@ -31,7 +16,17 @@ export async function POST(req: Request) {
       setStatus(lead.id, "approved");
     } else if (action === "publish") {
       setStatus(lead.id, "approved");
-      spawnPublish(lead.id);
+      // Fire-and-forget publish. spawnPublish holds an in-process lock, so a
+      // concurrent publish for the same lead is refused rather than launching a
+      // second browser that would duplicate the calendar entry.
+      const child = spawnPublish(lead.id, { detached: true, stdio: "ignore" });
+      if (!child) {
+        return NextResponse.json(
+          { ok: false, error: "already publishing this lead" },
+          { status: 409 },
+        );
+      }
+      child.unref();
       return NextResponse.json({ ok: true, publishing: true });
     } else {
       return NextResponse.json({ ok: false, error: "unknown action" }, { status: 400 });

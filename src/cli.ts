@@ -1,4 +1,4 @@
-import { config } from "./config.js";
+import { config, reloadConfig } from "./config.js";
 import { runPipeline } from "./pipeline.js";
 import { startReviewServer } from "./review/server.js";
 import { exportLeads } from "./export.js";
@@ -61,6 +61,9 @@ async function main() {
 
       const tick = async () => {
         try {
+          // Pick up Settings-page changes (groups, threshold, etc.) written to
+          // settings.json since the process started, before each scan.
+          reloadConfig();
           const { scanned, inserted } = await runPipeline();
           console.log(`[${new Date().toISOString()}] scanned ${scanned} msg(s), ${inserted} new lead(s).`);
         } catch (e) {

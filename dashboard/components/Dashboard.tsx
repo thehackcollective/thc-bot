@@ -45,13 +45,6 @@ export default function Dashboard({
     return () => clearTimeout(t);
   }, [toast]);
 
-  async function refresh() {
-    const r = await fetch("/api/leads", { cache: "no-store" });
-    const j = await r.json();
-    setLeads(j.pending);
-    setStats(j.stats);
-  }
-
   async function onAction(id: number, action: Action) {
     setBusyId(id);
     try {

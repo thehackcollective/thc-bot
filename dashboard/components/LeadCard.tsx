@@ -104,9 +104,11 @@ export default function LeadCard({
       <div className="actions">
         {lead.status === "pending" && (
           <>
-            <button className="btn primary" disabled={busy} onClick={() => onAction(lead.id, "publish")}>
-              Approve &amp; Publish to Luma
-            </button>
+            {lead.lumaUrl && (
+              <button className="btn primary" disabled={busy} onClick={() => onAction(lead.id, "publish")}>
+                Approve &amp; Publish to Luma
+              </button>
+            )}
             <button className="btn" disabled={busy} onClick={() => onAction(lead.id, "approve")}>
               Approve only
             </button>

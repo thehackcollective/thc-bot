@@ -41,12 +41,20 @@ export function parseJsonOutput(stdout: string): any[] {
     return [v];
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("wacli error")) throw e;
-    // Fall back to NDJSON.
+    // Fall back to NDJSON. Parse line-by-line and drop any malformed line (e.g. a
+    // stray wacli progress indicator on stdout) so one bad line doesn't abort the
+    // whole message fetch for a group.
     return trimmed
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean)
-      .map((l) => JSON.parse(l));
+      .flatMap((l) => {
+        try {
+          return [JSON.parse(l)];
+        } catch {
+          return [];
+        }
+      });
   }
 }
 
