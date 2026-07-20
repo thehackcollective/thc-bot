@@ -54,7 +54,7 @@ jobs:
       # Structural rules in ast-grep-rules/ (config: sgconfig.yml). Safe on a bare tree:
       # with no source files it simply finds nothing.
       - name: ast-grep scan
-        run: npx --yes @ast-grep/cli@0.44.1 scan
+        run: npx --yes --package @ast-grep/cli@0.44.1 ast-grep scan
 
   typecheck:
     name: typecheck
