@@ -1,0 +1,21 @@
+# Normalize line endings: check out and commit with LF everywhere.
+* text=auto eol=lf
+
+# Shell scripts must stay LF regardless of platform.
+*.sh text eol=lf
+
+# Generated / vendored files: collapse in diffs and exclude from language stats.
+package-lock.json linguist-generated=true -diff
+dashboard/package-lock.json linguist-generated=true -diff
+*.tsbuildinfo linguist-generated=true -diff
+
+# Binary assets — never touch line endings or attempt text diffs.
+*.sqlite binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

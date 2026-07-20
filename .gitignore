@@ -1,0 +1,34 @@
+node_modules/
+dist/
+
+# Next.js build output (dashboard)
+.next/
+dashboard/.next/
+*.tsbuildinfo
+
+# Local editor / tooling config
+.claude/
+.idea/
+.vscode/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# WhatsApp / wacli local session + message DB
+.wacli/
+*.session
+wa-store/
+
+# Local runtime data (review queue DB, settings) — keep the dir, ignore contents
+data/*
+!data/.gitkeep
+
+# Saved Luma browser profile
+.luma-profile/
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db

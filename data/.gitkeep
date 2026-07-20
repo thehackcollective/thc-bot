@@ -1,0 +1,2 @@
+# Keeps the runtime data directory in the tree. The bot writes its SQLite review
+# queue (thc-bot.sqlite) and settings.json here at runtime; those are gitignored.
