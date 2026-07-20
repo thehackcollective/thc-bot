@@ -1,0 +1,13 @@
+id: no-debugger
+language: typescript
+severity: error
+message: "Remove `debugger` statements before merging."
+rule:
+  pattern: debugger
+---
+id: no-debugger-tsx
+language: tsx
+severity: error
+message: "Remove `debugger` statements before merging."
+rule:
+  pattern: debugger

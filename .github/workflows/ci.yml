@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a fresh push doesn't queue behind stale ones.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  oxlint:
+    name: oxlint
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # correctness rules fail the build; perf/suspicious stay advisory (see .oxlintrc.json).
+      - name: oxlint
+        run: npx --yes oxlint@1.74.0 src dashboard
+
+  ast-grep:
+    name: ast-grep
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Structural rules in ast-grep-rules/ (config: sgconfig.yml).
+      - name: ast-grep scan
+        run: npx --yes @ast-grep/cli@0.44.1 scan
+
+  typecheck:
+    name: typecheck
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            dashboard/package-lock.json
+      - name: Install bot deps
+        run: npm ci
+      - name: Typecheck bot
+        run: npm run typecheck
+      - name: Install dashboard deps
+        run: npm ci
+        working-directory: dashboard
+      - name: Typecheck dashboard
+        run: npx tsc --noEmit
+        working-directory: dashboard
+
+  react-doctor:
+    name: react-doctor
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install dashboard deps
+        run: npm ci
+        working-directory: dashboard
+      # --blocking error fails only on errors; the current warnings stay advisory.
+      - name: react-doctor
+        run: npx --yes react-doctor@0.8.1 . --no-telemetry --blocking error
+        working-directory: dashboard

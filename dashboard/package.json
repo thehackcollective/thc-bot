@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev -p 4600",
     "build": "next build",
-    "start": "next start -p 4600"
+    "start": "next start -p 4600",
+    "doctor": "npx --yes react-doctor@0.8.1 . --no-telemetry"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

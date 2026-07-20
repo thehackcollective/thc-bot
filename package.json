@@ -17,7 +17,9 @@
     "login": "tsx src/cli.ts login",
     "publish": "tsx src/cli.ts publish",
     "export": "tsx src/cli.ts export",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "npx --yes oxlint@1.74.0 src dashboard",
+    "lint:ast": "npx --yes @ast-grep/cli@0.44.1 scan"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^3.0.0",

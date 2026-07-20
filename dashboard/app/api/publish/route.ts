@@ -1,11 +1,8 @@
-import { spawn } from "node:child_process";
-import { join } from "node:path";
 import { getLead, setStatus } from "@/lib/db";
+import { spawnPublish } from "@/lib/publish";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const BOT_ROOT = join(process.cwd(), "..");
 
 // Noisy library lines we don't want in the user-facing console.
 const NOISE = /AI SDK Warning|allowSystemInMessages|performing understudy|^\[stagehand\] response$/;
@@ -16,6 +13,13 @@ export async function POST(req: Request) {
   const lead = getLead(Number(id));
   if (!lead) return new Response("lead not found", { status: 404 });
   setStatus(lead.id, "approved");
+
+  // Guard: refuse a second concurrent publish for the same lead so we never open
+  // two browsers and add the event to the calendar twice.
+  const child = spawnPublish(lead.id, { stdio: "pipe" });
+  if (!child) {
+    return new Response("already publishing this lead\n", { status: 409 });
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -39,12 +43,8 @@ export async function POST(req: Request) {
         controller.close();
       };
 
-      const child = spawn("npm", ["run", "publish", "--", String(lead.id)], {
-        cwd: BOT_ROOT,
-        env: process.env,
-      });
-      child.stdout.on("data", (d) => feed(d.toString()));
-      child.stderr.on("data", (d) => feed(d.toString()));
+      child.stdout?.on("data", (d) => feed(d.toString()));
+      child.stderr?.on("data", (d) => feed(d.toString()));
       child.on("error", (e) => {
         emit(`\n[error] ${e.message}\n`);
         end();
