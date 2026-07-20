@@ -40,8 +40,9 @@ jobs:
         with:
           node-version: 22
       # correctness rules fail the build; perf/suspicious stay advisory (see .oxlintrc.json).
+      # Only scan dashboard when it's present so this stays green on a bot-only tree.
       - name: oxlint
-        run: npx --yes oxlint@1.74.0 src dashboard
+        run: npx --yes oxlint@1.74.0 src ${{ needs.detect.outputs.dashboard == 'true' && 'dashboard' || '' }}
 
   ast-grep:
     name: ast-grep
@@ -67,9 +68,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            dashboard/package-lock.json
+          # Only the bot lock file is guaranteed here; dashboard has its own cached npm ci step.
+          cache-dependency-path: package-lock.json
       - name: Install bot deps
         run: npm ci
       - name: Typecheck bot
