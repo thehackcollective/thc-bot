@@ -15,7 +15,7 @@ interface Me {
 const NAV = [
   { href: "/", label: "Review", Icon: IReview, group: "Curate" },
   { href: "/events", label: "All events", Icon: IEvents, group: "Curate" },
-  { href: "/moderation", label: "Moderation", Icon: IShield, group: "Curate" },
+  { href: "/moderation", label: "Moderation", Icon: IShield, group: "Curate", beta: true },
   { href: "/groups", label: "WhatsApp", Icon: IChat, group: "Sources" },
   { href: "/luma", label: "Luma", Icon: ILuma, group: "Sources" },
   { href: "/users", label: "Admins", Icon: IUsers, group: "System", superAdmin: true },
@@ -93,7 +93,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       alive = false;
       clearInterval(t);
     };
-  }, [path, bare]);
+  }, [path, bare, toast]);
 
   if (bare) return <>{children}</>;
 
@@ -126,6 +126,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <n.Icon />
                   </span>
                   {n.label}
+                  {n.beta ? <span className="beta-tag">beta</span> : null}
                   {n.href === "/" && pending ? <span className="badge">{pending}</span> : null}
                 </Link>
               </div>

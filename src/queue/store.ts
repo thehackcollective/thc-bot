@@ -45,14 +45,25 @@ function db(): Database.Database {
       reason TEXT NOT NULL,
       signals TEXT NOT NULL,
       sender TEXT NOT NULL,
+      senderJid TEXT,
       msgTimestamp TEXT NOT NULL,
       sourceChat TEXT NOT NULL,
+      chatJid TEXT,
       sourceText TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
+      actionTaken TEXT,
+      actionAt TEXT,
+      actionError TEXT,
       createdAt TEXT NOT NULL
     );
   `);
   ensureColumn(_db, "leads", "rejectedAt", "TEXT"); // when a lead was rejected; drives 30-day purge
+  // Flags predating the moderation-actions feature lack these; nullable so old rows survive.
+  ensureColumn(_db, "flags", "senderJid", "TEXT");
+  ensureColumn(_db, "flags", "chatJid", "TEXT");
+  ensureColumn(_db, "flags", "actionTaken", "TEXT"); // 'delete' | 'remove', comma-joined if both
+  ensureColumn(_db, "flags", "actionAt", "TEXT");
+  ensureColumn(_db, "flags", "actionError", "TEXT");
   return _db;
 }
 
@@ -137,9 +148,9 @@ export function purgeOldRejects(days = 30): number {
 export function upsertFlags(flags: MessageFlag[], nowIso: string): number {
   const stmt = db().prepare(`
     INSERT OR IGNORE INTO flags
-      (sourceMsgId,category,confidence,reason,signals,sender,msgTimestamp,sourceChat,sourceText,status,createdAt)
+      (sourceMsgId,category,confidence,reason,signals,sender,senderJid,msgTimestamp,sourceChat,chatJid,sourceText,status,createdAt)
     VALUES
-      (@sourceMsgId,@category,@confidence,@reason,@signals,@sender,@msgTimestamp,@sourceChat,@sourceText,'pending',@createdAt)
+      (@sourceMsgId,@category,@confidence,@reason,@signals,@sender,@senderJid,@msgTimestamp,@sourceChat,@chatJid,@sourceText,'pending',@createdAt)
   `);
   const tx = db().transaction((rows: MessageFlag[]) => {
     let n = 0;

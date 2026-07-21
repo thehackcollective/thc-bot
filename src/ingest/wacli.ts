@@ -77,6 +77,8 @@ export function normalizeChat(o: any): WaChat {
 
 export function normalizeMessage(o: any, chatName: string): WaMessage {
   // wacli uses PascalCase keys (Text, Timestamp, SenderName, ...); keep lowercase fallbacks too.
+  // The two wacli surfaces disagree on names: `messages list` emits ChatJID/MsgID/SenderName,
+  // while the sync webhook emits Chat/ID/PushName for the same fields. Accept both.
   const rawTs = pick<any>(o, ["Timestamp", "timestamp", "time", "ts", "date", "sent_at"]);
   let iso: string;
   if (typeof rawTs === "number") {
@@ -90,10 +92,22 @@ export function normalizeMessage(o: any, chatName: string): WaMessage {
   const text = pick(o, ["Text", "text", "body", "content", "message"]) ||
     pick(o, ["MediaCaption", "caption"]) || "";
   return {
-    id: String(pick(o, ["MsgID", "id", "msg_id", "message_id", "key_id"]) || ""),
-    chatJid: pick(o, ["ChatJID", "chat", "chat_jid", "chatJid", "chatId"]) || "",
+    id: String(pick(o, ["MsgID", "ID", "id", "msg_id", "message_id", "key_id"]) || ""),
+    chatJid: pick(o, ["ChatJID", "Chat", "chat", "chat_jid", "chatJid", "chatId"]) || "",
     chatName: pick(o, ["ChatName"]) || chatName,
-    sender: pick(o, ["SenderName", "SenderJID", "sender", "sender_jid", "from", "author", "pushname"]) || "unknown",
+    sender:
+      pick(o, [
+        "SenderName",
+        "PushName",
+        "SenderJID",
+        "sender",
+        "sender_jid",
+        "from",
+        "author",
+        "pushname",
+      ]) || "unknown",
+    // JID/phone specifically (not display name) — needed to remove a sender from a group.
+    senderJid: pick(o, ["SenderJID", "sender_jid", "SenderPN", "senderPn", "participant"]) || "",
     timestamp: iso,
     text,
   };
@@ -126,7 +140,10 @@ export async function fetchMessages(
   afterIso: string,
   limit = 2000,
 ): Promise<WaMessage[]> {
-  const after = afterIso.slice(0, 10); // wacli accepts YYYY-MM-DD or RFC3339
+  // Full RFC3339, not a bare date: wacli treats --after as strictly-greater, so the
+  // cursor skips exactly what we've already seen. Truncating to the day made every
+  // scan re-read the whole day and re-create flags that had been cleared.
+  const after = afterIso;
   const rows = await wacli([
     "messages",
     "list",

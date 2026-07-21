@@ -13,6 +13,9 @@ dashboard/.next/
 .env.*
 !.env.example
 
+# Per-run token the dashboard uses to reach the bot's action broker
+data/.action-token
+
 # WhatsApp / wacli local session + message DB
 .wacli/
 *.session
