@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
 
@@ -6,17 +6,34 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const BOT_ROOT = join(process.cwd(), "..");
+const BOT_PORT = process.env.WA_WEBHOOK_PORT || "4610";
 
-// Persist the watcher on the module (survives across requests in the same dev-server process).
-const g = globalThis as unknown as { __thcWatch?: ChildProcess; __thcWatchSince?: string };
-
-function running(): boolean {
-  return !!g.__thcWatch && !g.__thcWatch.killed && g.__thcWatch.exitCode === null;
+/**
+ * Ask the bot itself whether it's alive, rather than tracking a child handle.
+ *
+ * The bot binds a loopback port as a singleton, so this is authoritative even when
+ * the bot was started from a terminal. Tracking a spawned child in a module global
+ * did not survive Next's hot recompiles, so every reload spawned another bot —
+ * which is how nine of them ended up running at once.
+ */
+async function botStatus(): Promise<{ running: boolean; since: string | null; pid?: number }> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${BOT_PORT}/health`, {
+      signal: AbortSignal.timeout(1500),
+      cache: "no-store",
+    });
+    if (!res.ok) return { running: false, since: null };
+    const j = await res.json();
+    return { running: true, since: j?.since ?? null, pid: j?.pid };
+  } catch {
+    return { running: false, since: null };
+  }
 }
 
-// Start the bot's watch loop (wacli sync --follow + periodic scan) if not already running.
+/** Start the bot's watch loop, but only if nothing is already listening. */
 export async function POST() {
-  if (running()) return NextResponse.json({ running: true, since: g.__thcWatchSince, started: false });
+  const before = await botStatus();
+  if (before.running) return NextResponse.json({ ...before, started: false });
 
   const child = spawn("npm", ["run", "watch"], {
     cwd: BOT_ROOT,
@@ -25,14 +42,13 @@ export async function POST() {
     env: process.env,
   });
   child.unref();
-  child.on("exit", () => {
-    if (g.__thcWatch === child) g.__thcWatch = undefined;
-  });
-  g.__thcWatch = child;
-  g.__thcWatchSince = new Date().toISOString();
-  return NextResponse.json({ running: true, since: g.__thcWatchSince, started: true });
+
+  // Give it a moment to bind, then report what's actually true rather than assuming.
+  await new Promise((r) => setTimeout(r, 1200));
+  const after = await botStatus();
+  return NextResponse.json({ ...after, started: after.running });
 }
 
 export async function GET() {
-  return NextResponse.json({ running: running(), since: running() ? g.__thcWatchSince : null });
+  return NextResponse.json(await botStatus());
 }

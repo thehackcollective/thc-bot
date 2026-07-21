@@ -19,8 +19,10 @@ function toFlag(
     reason,
     signals: signals.join(", "),
     sender: msg.sender,
+    senderJid: msg.senderJid,
     msgTimestamp: msg.timestamp,
     sourceChat: msg.chatName,
+    chatJid: msg.chatJid,
     sourceMsgId: msg.id,
     sourceText: msg.text,
   };

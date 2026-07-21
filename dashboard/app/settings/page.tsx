@@ -91,7 +91,7 @@ export default function SettingsPage() {
         </h3>
         <p className="hint">
           Flag scam/spam messages (account resale, fake deals) into the Moderation queue. Detection
-          only — nothing is deleted from WhatsApp.
+          only, unless you turn on WhatsApp actions below.
         </p>
         <div className="field">
           <label>
@@ -118,6 +118,26 @@ export default function SettingsPage() {
           />
           <small style={{ color: "var(--text-faint)", fontSize: 12.5 }}>
             Borderline messages the model scores below this are not flagged. Obvious spam is always flagged.
+          </small>
+        </div>
+
+        <div className="field">
+          <label>
+            <input
+              type="checkbox"
+              checked={s.moderationActionsEnabled}
+              // No window.confirm() here: browsers suppress repeated native dialogs,
+              // which would silently drop the change. Each action confirms in-page.
+              onChange={(e) => save({ moderationActionsEnabled: e.target.checked })}
+              style={{ marginRight: 8 }}
+            />
+            Allow WhatsApp actions (delete message / remove sender)
+          </label>
+          <small style={{ color: "var(--text-faint)", fontSize: 12.5 }}>
+            Off by default. The bot never acts on its own — actions only run when you click them in
+            the Moderation queue, each behind its own confirmation, and they cannot be undone.
+            Both need the bot account to be a group admin, and WhatsApp only allows deleting
+            messages that this account itself sent.
           </small>
         </div>
       </div>

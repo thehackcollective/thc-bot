@@ -1,4 +1,11 @@
 import { config, reloadConfig } from "./config.js";
+import { SyncBroker } from "./ingest/sync-broker.js";
+import {
+  clearActionToken,
+  newActionToken,
+  newWebhookSecret,
+  startWebhookServer,
+} from "./ingest/webhook.js";
 import { runPipeline } from "./pipeline.js";
 import { startReviewServer } from "./review/server.js";
 import { exportLeads } from "./export.js";
@@ -52,14 +59,28 @@ async function main() {
     }
     case "watch": {
       // Continuously ingest WhatsApp + scan for events on an interval.
-      const { spawn } = await import("node:child_process");
       const intervalMs = Math.max(1, config.pollIntervalMinutes) * 60_000;
+      // Live moderation: wacli POSTs each incoming message to a loopback server, so
+      // scams are flagged in seconds instead of waiting for the next scan. The timer
+      // still runs — it does event extraction and backfills anything missed.
+      const secret = newWebhookSecret();
+      const actionToken = newActionToken();
+      // A following sync holds wacli's exclusive store lock, so moderation actions
+      // from the dashboard have to go through the broker, which pauses sync for them.
+      const broker = new SyncBroker([
+        "sync",
+        "--follow",
+        "--webhook",
+        `http://127.0.0.1:${config.webhookPort}/wa`,
+        "--webhook-secret",
+        secret,
+        "--webhook-allow-private", // the receiver is 127.0.0.1 by design
+      ]);
+      const { server, url } = startWebhookServer(secret, { broker, actionToken });
       console.log(
-        `Watch mode: wacli sync --follow + scan every ${config.pollIntervalMinutes} min. Ctrl+C to stop.`,
+        `Watch mode: live moderation on ${url}, scan every ${config.pollIntervalMinutes} min. Ctrl+C to stop.`,
       );
-      // Keep wacli pulling fresh messages into its local DB while we run.
-      const sync = spawn("wacli", ["sync", "--follow"], { stdio: "ignore" });
-      sync.on("error", (e) => console.error("wacli sync failed to start:", e.message));
+      broker.start();
 
       const tick = async () => {
         try {
@@ -78,7 +99,9 @@ async function main() {
       const timer = setInterval(tick, intervalMs);
       const stop = () => {
         clearInterval(timer);
-        sync.kill();
+        broker.stop();
+        clearActionToken();
+        server.close();
         process.exit(0);
       };
       process.on("SIGINT", stop);

@@ -19,11 +19,12 @@
   --sage: #7fad86;
   --danger: #c76a7a;
   --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
-  /* Display stack — copernicus where licensed, Georgia fallback otherwise */
-  --font-display: "copernicus", "__copernicus_669e4a", ui-serif, Georgia, Cambria,
-    "Times New Roman", Times, serif;
-  --font-body: "copernicus", "__copernicus_669e4a", ui-serif, Georgia, Cambria,
-    "Times New Roman", Times, serif;
+  /* Anthropic's UI sans is "Styrene" (proprietary — loads only where licensed); everyone
+     else gets Inter (bundled via next/font) then the system sans, matching the Claude app. */
+  --font-sans: "Styrene A", "Styrene B", var(--font-ui), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-body: var(--font-sans);
 }
 
 * {
@@ -204,7 +205,7 @@ a.nav .badge {
 }
 .page-head h1 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-weight: 600;
   font-size: clamp(32px, 4.4vw, 46px);
   letter-spacing: -0.02em;
   line-height: 1.02;
@@ -227,7 +228,7 @@ a.nav .badge {
 }
 .panel h3 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-weight: 600;
   font-size: 21px;
   margin-bottom: 4px;
 }
@@ -251,6 +252,7 @@ a.nav .badge {
 .field input[type="text"],
 .field input[type="url"],
 .field input[type="number"],
+.field input[type="password"],
 .field select {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border-strong);
@@ -260,16 +262,26 @@ a.nav .badge {
   font-family: inherit;
   font-size: 14.5px;
   outline: none;
+  color-scheme: dark;
 }
 .field input:focus,
 .field select:focus {
-  border-color: var(--coral);
+  border-color: var(--accent);
 }
 .field input[type="range"] {
-  accent-color: var(--coral);
+  accent-color: var(--accent);
   padding: 0;
   border: none;
   background: transparent;
+}
+/* Keep dark theme when the browser paints autofill (common on password fields). */
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow: 0 0 0 1000px #1a1624 inset;
+  transition: background-color 99999s ease-out;
 }
 .row {
   display: flex;
@@ -429,7 +441,7 @@ a.nav .badge {
 h1.title {
   font-size: clamp(44px, 7vw, 82px);
   line-height: 0.98;
-  font-weight: 400;
+  font-weight: 600;
   letter-spacing: -0.02em;
   margin: 26px 0 18px;
 }
@@ -484,7 +496,7 @@ h1.title em {
 }
 .section-head h2 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-weight: 600;
   font-size: 26px;
   letter-spacing: -0.01em;
 }
@@ -525,7 +537,7 @@ h1.title em {
 }
 .card h3 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-weight: 600;
   font-size: 27px;
   line-height: 1.12;
   letter-spacing: -0.01em;
@@ -813,15 +825,21 @@ button.btn.ghost:hover {
 /* ---- Moderation (scam/spam beta) ---- */
 .beta-tag {
   font-family: var(--font-body), sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--coral-soft);
-  border: 1px solid var(--border-strong);
+  color: var(--accent-soft);
+  border: 1px solid rgba(188, 63, 255, 0.35);
+  background: var(--accent-dim);
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 2px 7px;
   vertical-align: middle;
+  margin-left: 2px;
+  line-height: 1.2;
+}
+a.nav .beta-tag {
+  margin-left: auto;
 }
 .mod-filters {
   display: flex;
@@ -936,6 +954,53 @@ button.btn.ghost:hover {
   opacity: 0.5;
   cursor: default;
 }
+/* Irreversible WhatsApp actions — visually separated from confirm/dismiss. */
+.mod-actions.danger {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-strong);
+}
+.mod-actions button.danger {
+  background: transparent;
+  color: var(--danger, #d9534f);
+  border: 1px solid var(--danger, #d9534f);
+}
+.mod-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto; /* pushed to the far side of the filter row */
+}
+.mod-clear button {
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-dim);
+}
+.mod-clear button.danger {
+  color: var(--danger, #d9534f);
+  border-color: var(--danger, #d9534f);
+}
+.mod-clear .mod-confirm {
+  flex: 0 1 auto;
+  margin-bottom: 0;
+}
+.mod-confirm {
+  flex: 1 1 100%;
+  font-size: 13px;
+  color: var(--danger, #d9534f);
+  margin-bottom: 6px;
+}
+.mod-error {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--danger, #d9534f);
+}
 .mod-status {
   margin-top: 10px;
   font-size: 13px;
@@ -977,7 +1042,7 @@ button.btn.ghost:hover {
 }
 .login-card h1 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-weight: 600;
   font-size: 26px;
   letter-spacing: -0.02em;
   line-height: 1.1;
@@ -1109,7 +1174,7 @@ button.btn.ghost:hover {
 }
 .auth-brand-copy h2 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
+  font-weight: 600;
   font-size: clamp(28px, 3.2vw, 40px);
   letter-spacing: -0.02em;
   line-height: 1.05;
@@ -1124,36 +1189,69 @@ button.btn.ghost:hover {
 .auth-form {
   display: grid;
   place-items: center;
-  padding: 32px;
+  padding: 40px 32px;
+  background: var(--bg);
 }
 .auth-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 372px;
 }
 .auth-card h1 {
   font-family: var(--font-display), serif;
-  font-weight: 400;
-  font-size: 32px;
+  font-weight: 600;
+  font-size: 34px;
   letter-spacing: -0.02em;
   line-height: 1.05;
+  color: var(--text);
 }
 .auth-card .login-sub {
-  margin-bottom: 26px;
+  color: var(--text-dim);
+  font-size: 14.5px;
+  margin: 6px 0 30px;
+}
+.auth-card .field {
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.auth-card .field label {
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 .auth-card .field input[type="text"],
 .auth-card .field input[type="password"] {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 11px;
+  padding: 13px 15px;
   color: var(--text);
   font-family: inherit;
   font-size: 15px;
   outline: none;
   width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.auth-card .field input::placeholder {
+  color: var(--text-faint);
 }
 .auth-card .field input:focus {
   border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+}
+.auth-card .login-btn {
+  margin-top: 6px;
+  padding: 13px 16px;
+  font-size: 15px;
+  border-radius: 11px;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.auth-card .login-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.auth-card .login-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 /* Stack to a single column on narrow screens; the WebGL panel becomes a short banner. */

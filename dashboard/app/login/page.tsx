@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { gsap } from "gsap";
 
-// The WebGL scene is client-only and heavy, so load it lazily with no SSR.
+// Canvas backdrop is client-only; skip SSR.
 const LoginScene = dynamic(() => import("@/components/LoginScene"), { ssr: false });
 
 export default function LoginPage() {
@@ -15,14 +14,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const formRef = useRef<HTMLDivElement>(null);
-
-  // Stagger the form + brand copy in on mount.
-  useEffect(() => {
-    if (!formRef.current) return;
-    const items = formRef.current.querySelectorAll("[data-anim]");
-    gsap.from(items, { opacity: 0, y: 18, duration: 0.6, stagger: 0.08, ease: "power3.out" });
-  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,7 +30,6 @@ export default function LoginPage() {
         setErr(j.error || "Login failed");
         return;
       }
-      // Force the password change before honouring any deep link.
       if (j.user?.mustChangePassword) {
         router.push("/change-password");
         router.refresh();
@@ -48,8 +38,8 @@ export default function LoginPage() {
       const next = params.get("next") || "/";
       router.push(next.startsWith("/") ? next : "/");
       router.refresh();
-    } catch (e) {
-      setErr(String(e));
+    } catch (err) {
+      setErr(String(err));
     } finally {
       setBusy(false);
     }
@@ -57,7 +47,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-split">
-      {/* Left: brand + WebGL backdrop */}
+      {/* Left: brand + pixelated canvas backdrop */}
       <aside className="auth-brand">
         <div className="auth-scene">
           <LoginScene />
@@ -73,16 +63,15 @@ export default function LoginPage() {
       </aside>
 
       {/* Right: sign-in form */}
-      <main className="auth-form" ref={formRef}>
+      <main className="auth-form">
         <form className="auth-card" onSubmit={submit}>
-          <h1 data-anim>Welcome back</h1>
-          <p className="login-sub" data-anim>
-            Sign in to the lead console.
-          </p>
+          <h1>Welcome back</h1>
+          <p className="login-sub">Sign in to the lead console.</p>
 
-          <div className="field" data-anim>
-            <label>Username</label>
+          <div className="field">
+            <label htmlFor="username">Username</label>
             <input
+              id="username"
               type="text"
               autoFocus
               autoComplete="username"
@@ -90,9 +79,10 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
             />
           </div>
-          <div className="field" data-anim>
-            <label>Password</label>
+          <div className="field">
+            <label htmlFor="password">Password</label>
             <input
+              id="password"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -100,9 +90,9 @@ export default function LoginPage() {
             />
           </div>
 
-          {err && <p className="login-err" data-anim>⚠ {err}</p>}
+          {err && <p className="login-err">⚠ {err}</p>}
 
-          <button type="submit" className="login-btn" data-anim disabled={busy}>
+          <button type="submit" className="login-btn" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>

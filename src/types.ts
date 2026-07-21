@@ -4,7 +4,8 @@ export interface WaMessage {
   id: string;
   chatJid: string;
   chatName: string;
-  sender: string;
+  sender: string; // display name (or JID if no name)
+  senderJid: string; // sender's WhatsApp JID/phone, for moderation actions
   timestamp: string; // ISO 8601
   text: string;
 }
@@ -39,8 +40,10 @@ export interface MessageFlag {
   reason: string; // why it was flagged (heuristic label or model reason)
   signals: string; // comma-joined heuristic signal labels
   sender: string;
+  senderJid: string; // for the optional "remove sender" moderation action
   msgTimestamp: string; // ISO of the flagged message
-  sourceChat: string;
+  sourceChat: string; // chat display name
+  chatJid: string; // chat JID (for delete/remove actions)
   sourceMsgId: string;
   sourceText: string;
 }
@@ -51,6 +54,10 @@ export interface QueuedFlag extends MessageFlag {
   id: number;
   status: FlagStatus;
   createdAt: string;
+  // Set once a WhatsApp-side action runs. Null on flags predating the feature.
+  actionTaken: string | null; // 'delete' | 'remove' (comma-joined if both)
+  actionAt: string | null;
+  actionError: string | null;
 }
 
 export type LeadStatus = "pending" | "approved" | "rejected" | "published";

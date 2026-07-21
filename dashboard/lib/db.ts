@@ -112,22 +112,39 @@ export interface QueuedFlag {
   reason: string;
   signals: string;
   sender: string;
+  senderJid: string | null;
   msgTimestamp: string;
   sourceChat: string;
+  chatJid: string | null;
+  sourceMsgId: string;
   sourceText: string;
   status: FlagStatus;
   createdAt: string;
+  actionTaken: string | null;
+  actionAt: string | null;
+  actionError: string | null;
 }
 
 function ensureFlags(): void {
-  db().exec(`
+  const d = db();
+  d.exec(`
     CREATE TABLE IF NOT EXISTS flags (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sourceMsgId TEXT UNIQUE NOT NULL,
       category TEXT NOT NULL, confidence REAL NOT NULL, reason TEXT NOT NULL, signals TEXT NOT NULL,
-      sender TEXT NOT NULL, msgTimestamp TEXT NOT NULL, sourceChat TEXT NOT NULL, sourceText TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending', createdAt TEXT NOT NULL
+      sender TEXT NOT NULL, senderJid TEXT, msgTimestamp TEXT NOT NULL,
+      sourceChat TEXT NOT NULL, chatJid TEXT, sourceText TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      actionTaken TEXT, actionAt TEXT, actionError TEXT,
+      createdAt TEXT NOT NULL
     );`);
+  // Mirror the bot's migrations for DBs created before moderation actions existed.
+  const cols = new Set(
+    (d.prepare("PRAGMA table_info(flags)").all() as { name: string }[]).map((c) => c.name),
+  );
+  for (const col of ["senderJid", "chatJid", "actionTaken", "actionAt", "actionError"]) {
+    if (!cols.has(col)) d.exec(`ALTER TABLE flags ADD COLUMN ${col} TEXT`);
+  }
 }
 
 export function listFlags(status?: FlagStatus): QueuedFlag[] {
@@ -142,6 +159,39 @@ export function listFlags(status?: FlagStatus): QueuedFlag[] {
 export function setFlagStatus(id: number, status: FlagStatus): void {
   ensureFlags();
   db().prepare("UPDATE flags SET status=? WHERE id=?").run(status, id);
+}
+
+/**
+ * Delete flags from the local queue — the review record only, nothing on WhatsApp.
+ * Pass a status to clear just that bucket, or nothing to clear all. Ingest cursors
+ * are left alone on purpose: the bot won't re-flag messages it has already passed.
+ */
+export function clearFlags(status?: FlagStatus): number {
+  ensureFlags();
+  const n = status
+    ? db().prepare("DELETE FROM flags WHERE status=?").run(status).changes
+    : db().prepare("DELETE FROM flags").run().changes;
+  // Restart ids from 1 once the table is empty; keeps the queue readable.
+  const left = (db().prepare("SELECT COUNT(*) n FROM flags").get() as { n: number }).n;
+  if (!left) db().prepare("DELETE FROM sqlite_sequence WHERE name = ?").run("flags");
+  return n;
+}
+
+export function getFlag(id: number): QueuedFlag | undefined {
+  ensureFlags();
+  return db().prepare("SELECT * FROM flags WHERE id=?").get(id) as QueuedFlag | undefined;
+}
+
+/** Record the outcome of a WhatsApp-side action. `error` null means it succeeded. */
+export function recordFlagAction(id: number, action: string, error: string | null): void {
+  ensureFlags();
+  const prev = getFlag(id)?.actionTaken;
+  const taken = error
+    ? (prev ?? null)
+    : [...new Set([...(prev ? prev.split(",") : []), action])].join(",");
+  db()
+    .prepare("UPDATE flags SET actionTaken=?, actionAt=?, actionError=? WHERE id=?")
+    .run(taken, new Date().toISOString(), error, id);
 }
 
 export function flagStats(): { pending: number; confirmed: number; dismissed: number; total: number } {

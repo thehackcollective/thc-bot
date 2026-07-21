@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Shell from "@/components/Shell";
 import ConsoleProvider from "@/components/ConsoleProvider";
 import ToastProvider from "@/components/ToastProvider";
+
+// Free, high-quality stand-in for Anthropic's proprietary "Styrene" UI sans. globals.css
+// lists Styrene first (loads only where licensed), then this, then system sans.
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-ui" });
 
 export const metadata: Metadata = {
   title: "THC Bot · Lead Review",
@@ -15,11 +20,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Fonts are declared in globals.css :root as the Claude font stacks. "copernicus" is
-  // Anthropic's licensed typeface (not bundled — unavailable clients fall back to the serif
-  // stack, exactly as claude.ai does for non-Anthropic browsers).
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <ToastProvider>
           <ConsoleProvider>
