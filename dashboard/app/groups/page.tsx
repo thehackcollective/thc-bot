@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { WaGroup } from "@/lib/wacli";
+import { useToast } from "@/components/ToastProvider";
 
 type GroupFilter = "all" | "selected" | "active" | "unread" | "named";
 const FILTERS: { k: GroupFilter; label: string }[] = [
@@ -20,7 +21,7 @@ export default function GroupsPage() {
   const [filter, setFilter] = useState<GroupFilter>("all");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetch("/api/groups")
@@ -32,12 +33,6 @@ export default function GroupsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2600);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   async function persist(next: string[]) {
     setSelected(next);
@@ -53,12 +48,20 @@ export default function GroupsPage() {
   }
 
   async function backfill(jid: string) {
-    setToast("Backfill requested — pulling older messages from your phone.");
-    await fetch("/api/wa/backfill", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jid }),
-    });
+    toast("Backfill requested — pulling older messages from your phone.");
+    try {
+      const r = await fetch("/api/wa/backfill", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jid }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) {
+        toast(`Backfill failed: ${j.error || "WhatsApp rejected the request"}`, "error");
+      }
+    } catch (e) {
+      toast(`Backfill failed: ${String(e)}`, "error");
+    }
   }
 
   const counts = useMemo(() => {
@@ -171,7 +174,6 @@ export default function GroupsPage() {
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
     </>
   );
 }

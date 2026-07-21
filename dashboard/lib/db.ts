@@ -100,3 +100,60 @@ export function stats(): Stats {
   }
   return s;
 }
+
+// --- Moderation flags (scam/spam beta) ---
+
+export type FlagStatus = "pending" | "confirmed" | "dismissed";
+
+export interface QueuedFlag {
+  id: number;
+  category: "scam" | "spam";
+  confidence: number;
+  reason: string;
+  signals: string;
+  sender: string;
+  msgTimestamp: string;
+  sourceChat: string;
+  sourceText: string;
+  status: FlagStatus;
+  createdAt: string;
+}
+
+function ensureFlags(): void {
+  db().exec(`
+    CREATE TABLE IF NOT EXISTS flags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sourceMsgId TEXT UNIQUE NOT NULL,
+      category TEXT NOT NULL, confidence REAL NOT NULL, reason TEXT NOT NULL, signals TEXT NOT NULL,
+      sender TEXT NOT NULL, msgTimestamp TEXT NOT NULL, sourceChat TEXT NOT NULL, sourceText TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending', createdAt TEXT NOT NULL
+    );`);
+}
+
+export function listFlags(status?: FlagStatus): QueuedFlag[] {
+  ensureFlags();
+  return (
+    status
+      ? db().prepare("SELECT * FROM flags WHERE status=? ORDER BY confidence DESC, id DESC").all(status)
+      : db().prepare("SELECT * FROM flags ORDER BY id DESC").all()
+  ) as QueuedFlag[];
+}
+
+export function setFlagStatus(id: number, status: FlagStatus): void {
+  ensureFlags();
+  db().prepare("UPDATE flags SET status=? WHERE id=?").run(status, id);
+}
+
+export function flagStats(): { pending: number; confirmed: number; dismissed: number; total: number } {
+  ensureFlags();
+  const rows = db().prepare("SELECT status, COUNT(*) n FROM flags GROUP BY status").all() as {
+    status: FlagStatus;
+    n: number;
+  }[];
+  const s = { pending: 0, confirmed: 0, dismissed: 0, total: 0 };
+  for (const r of rows) {
+    (s as any)[r.status] = r.n;
+    s.total += r.n;
+  }
+  return s;
+}

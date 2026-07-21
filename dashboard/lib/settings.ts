@@ -12,6 +12,8 @@ export interface Settings {
   ingestSinceDays: number;
   lumaCalendarUrl: string;
   lumaDryRun: boolean; // fill Luma form but don't submit
+  moderationEnabled: boolean; // scam/spam detection beta
+  moderationThreshold: number; // 0..1 min confidence to keep an LLM flag
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -21,6 +23,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ingestSinceDays: 30,
   lumaCalendarUrl: "",
   lumaDryRun: false,
+  moderationEnabled: false,
+  moderationThreshold: 0.6,
 };
 
 export function readSettings(): Settings {

@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { config } from "../config.js";
-import type { LeadStatus, QueuedLead } from "../types.js";
+import type { FlagStatus, LeadStatus, MessageFlag, QueuedFlag, QueuedLead } from "../types.js";
 import type { ExtractedLead } from "../extract/events.js";
 
 let _db: Database.Database | null = null;
@@ -36,6 +36,20 @@ function db(): Database.Database {
     CREATE TABLE IF NOT EXISTS cursors (
       chatJid TEXT PRIMARY KEY,
       lastTs TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS flags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sourceMsgId TEXT UNIQUE NOT NULL,
+      category TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      reason TEXT NOT NULL,
+      signals TEXT NOT NULL,
+      sender TEXT NOT NULL,
+      msgTimestamp TEXT NOT NULL,
+      sourceChat TEXT NOT NULL,
+      sourceText TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      createdAt TEXT NOT NULL
     );
   `);
   ensureColumn(_db, "leads", "rejectedAt", "TEXT"); // when a lead was rejected; drives 30-day purge
@@ -115,6 +129,35 @@ export function purgeOldRejects(days = 30): number {
     )
     .run(cutoff);
   return r.changes;
+}
+
+// --- Moderation flags (scam/spam beta) ---
+
+/** Insert flags; skip messages already flagged (unique sourceMsgId). Returns inserted count. */
+export function upsertFlags(flags: MessageFlag[], nowIso: string): number {
+  const stmt = db().prepare(`
+    INSERT OR IGNORE INTO flags
+      (sourceMsgId,category,confidence,reason,signals,sender,msgTimestamp,sourceChat,sourceText,status,createdAt)
+    VALUES
+      (@sourceMsgId,@category,@confidence,@reason,@signals,@sender,@msgTimestamp,@sourceChat,@sourceText,'pending',@createdAt)
+  `);
+  const tx = db().transaction((rows: MessageFlag[]) => {
+    let n = 0;
+    for (const f of rows) n += stmt.run({ ...f, createdAt: nowIso }).changes;
+    return n;
+  });
+  return tx(flags);
+}
+
+export function listFlags(status?: FlagStatus): QueuedFlag[] {
+  const rows = status
+    ? db().prepare("SELECT * FROM flags WHERE status = ? ORDER BY confidence DESC, id DESC").all(status)
+    : db().prepare("SELECT * FROM flags ORDER BY id DESC").all();
+  return rows as QueuedFlag[];
+}
+
+export function setFlagStatus(id: number, status: FlagStatus): void {
+  db().prepare("UPDATE flags SET status = ? WHERE id = ?").run(status, id);
 }
 
 export function getCursor(chatJid: string): string | null {
