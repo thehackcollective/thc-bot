@@ -10,6 +10,6 @@ export async function POST(req: Request) {
     requests?: number;
   };
   if (!jid) return NextResponse.json({ ok: false, error: "jid required" }, { status: 400 });
-  backfill(jid, count ?? 200, requests ?? 3);
-  return NextResponse.json({ ok: true });
+  const r = await backfill(jid, count ?? 200, requests ?? 3);
+  return NextResponse.json(r, { status: r.ok ? 200 : 502 });
 }

@@ -90,7 +90,8 @@ export default function Dashboard({
     <main className="shell">
       <div ref={headerRef}>
         <span className="eyebrow" data-reveal>
-          <span className="dot" /> The Hack Collective
+          <img className="eyebrow-mark" src="/thc-logo.png" alt="" width={14} height={14} />{" "}
+          The Hack Collective
         </span>
         <h1 className="title font-display" data-reveal>
           Event leads, <em>curated</em>

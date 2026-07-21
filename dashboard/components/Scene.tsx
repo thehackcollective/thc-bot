@@ -10,8 +10,8 @@ function Particles({ count = 2600 }: { count?: number }) {
   const { positions, colors } = useMemo(() => {
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const coral = new THREE.Color("#d97757");
-    const cream = new THREE.Color("#e0d1b2");
+    const accent = new THREE.Color("#bc3fff");
+    const mist = new THREE.Color("#d4a3ff");
     for (let i = 0; i < count; i++) {
       // Distribute in a soft disc so density reads as depth, not noise.
       const r = Math.pow(Math.random(), 0.7) * 9;
@@ -19,7 +19,7 @@ function Particles({ count = 2600 }: { count?: number }) {
       positions[i * 3] = Math.cos(theta) * r;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 7;
       positions[i * 3 + 2] = Math.sin(theta) * r - 2;
-      const c = coral.clone().lerp(cream, Math.random());
+      const c = accent.clone().lerp(mist, Math.random());
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
       colors[i * 3 + 2] = c.b;
@@ -56,11 +56,11 @@ function Particles({ count = 2600 }: { count?: number }) {
 }
 
 function Glow() {
-  // Large soft coral halo behind the particles.
+  // Soft purple halo behind the particles — matches the THC logo.
   return (
     <mesh position={[0, 1.5, -6]}>
       <circleGeometry args={[6, 64]} />
-      <meshBasicMaterial color="#d97757" transparent opacity={0.06} />
+      <meshBasicMaterial color="#bc3fff" transparent opacity={0.07} />
     </mesh>
   );
 }

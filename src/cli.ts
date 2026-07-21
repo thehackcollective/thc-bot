@@ -14,8 +14,10 @@ async function main() {
     case "ingest":
     case "extract": {
       // Ingest + extract are one pipeline; all three aliases run it.
-      const { scanned, inserted } = await runPipeline();
-      console.log(`Done. Scanned ${scanned} msg(s), ${inserted} new lead(s) queued.`);
+      const { scanned, inserted, flagged } = await runPipeline();
+      console.log(
+        `Done. Scanned ${scanned} msg(s), ${inserted} new lead(s) queued${flagged ? `, ${flagged} flagged` : ""}.`,
+      );
       break;
     }
     case "review":
@@ -64,8 +66,10 @@ async function main() {
           // Pick up Settings-page changes (groups, threshold, etc.) written to
           // settings.json since the process started, before each scan.
           reloadConfig();
-          const { scanned, inserted } = await runPipeline();
-          console.log(`[${new Date().toISOString()}] scanned ${scanned} msg(s), ${inserted} new lead(s).`);
+          const { scanned, inserted, flagged } = await runPipeline();
+          console.log(
+            `[${new Date().toISOString()}] scanned ${scanned} msg(s), ${inserted} new lead(s)${flagged ? `, ${flagged} flagged` : ""}.`,
+          );
         } catch (e) {
           console.error("scan error:", e);
         }

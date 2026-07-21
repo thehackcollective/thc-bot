@@ -1,19 +1,29 @@
 :root {
-  /* Claude-inspired warm palette */
-  --bg: #17150f;
-  --bg-2: #1e1b13;
-  --surface: rgba(43, 38, 28, 0.55);
-  --surface-solid: #221e16;
-  --border: rgba(224, 209, 178, 0.12);
-  --border-strong: rgba(224, 209, 178, 0.22);
-  --text: #f4ecdd;
-  --text-dim: #b7ab93;
-  --text-faint: #8a7f6a;
-  --coral: #d97757; /* Claude brand coral */
-  --coral-soft: #e59a80;
-  --sage: #83a06e;
-  --danger: #c76a5a;
+  /* THC palette — cool dark base keyed to the logo purple (#bc3fff) */
+  --bg: #121018;
+  --bg-2: #18151f;
+  --surface: rgba(40, 34, 54, 0.55);
+  --surface-solid: #1c1826;
+  --border: rgba(210, 190, 245, 0.12);
+  --border-strong: rgba(210, 190, 245, 0.22);
+  --text: #f2eef8;
+  --text-dim: #a89bb8;
+  --text-faint: #7d718f;
+  --accent: #bc3fff; /* The Hack Collective logo */
+  --accent-soft: #d4a3ff;
+  --accent-dim: rgba(188, 63, 255, 0.14);
+  --on-accent: #1a0828;
+  /* Legacy aliases used across the stylesheet */
+  --coral: var(--accent);
+  --coral-soft: var(--accent-soft);
+  --sage: #7fad86;
+  --danger: #c76a7a;
   --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
+  /* Display stack — copernicus where licensed, Georgia fallback otherwise */
+  --font-display: "copernicus", "__copernicus_669e4a", ui-serif, Georgia, Cambria,
+    "Times New Roman", Times, serif;
+  --font-body: "copernicus", "__copernicus_669e4a", ui-serif, Georgia, Cambria,
+    "Times New Roman", Times, serif;
 }
 
 * {
@@ -28,9 +38,13 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body), system-ui, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+::selection {
+  background: rgba(188, 63, 255, 0.35);
+  color: var(--text);
 }
 
 .font-display {
@@ -38,15 +52,15 @@ body {
   font-optical-sizing: auto;
 }
 
-/* Static, quiet backdrop — one faint coral glow, no motion. */
+/* Static, quiet backdrop — faint purple wash keyed to the logo. */
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(70% 55% at 78% -8%, rgba(217, 119, 87, 0.1), transparent 60%),
-    radial-gradient(60% 45% at 0% 100%, rgba(131, 160, 110, 0.04), transparent 55%);
+    radial-gradient(70% 55% at 78% -8%, rgba(188, 63, 255, 0.12), transparent 60%),
+    radial-gradient(60% 45% at 0% 100%, rgba(127, 173, 134, 0.04), transparent 55%);
 }
 
 .shell {
@@ -70,7 +84,7 @@ body {
   top: 0;
   height: 100vh;
   border-right: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(30, 27, 19, 0.7), rgba(23, 21, 15, 0.5));
+  background: linear-gradient(180deg, rgba(24, 21, 31, 0.75), rgba(18, 16, 24, 0.55));
   backdrop-filter: blur(14px);
   padding: 28px 20px;
   display: flex;
@@ -87,13 +101,18 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: linear-gradient(150deg, var(--coral), #b45c3f);
+  background: rgba(255, 255, 255, 0.06);
   display: grid;
   place-items: center;
-  font-family: var(--font-display), serif;
-  color: #241009;
-  font-size: 19px;
-  box-shadow: 0 6px 18px -6px var(--coral);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 6px 18px -6px rgba(176, 66, 255, 0.45);
+}
+.brand .mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .brand .who {
   font-family: var(--font-display), serif;
@@ -129,12 +148,12 @@ a.nav {
   transition: background 0.16s ease, color 0.16s ease;
 }
 a.nav:hover {
-  background: rgba(224, 209, 178, 0.06);
+  background: rgba(210, 190, 245, 0.06);
   color: var(--text);
 }
 a.nav.active {
-  background: rgba(217, 119, 87, 0.14);
-  color: var(--coral-soft);
+  background: var(--accent-dim);
+  color: var(--accent-soft);
 }
 a.nav .ico {
   width: 17px;
@@ -145,8 +164,8 @@ a.nav .ico {
 a.nav .badge {
   margin-left: auto;
   font-size: 11.5px;
-  background: var(--coral);
-  color: #241009;
+  background: var(--accent);
+  color: var(--on-accent);
   border-radius: 999px;
   padding: 1px 8px;
   font-weight: 600;
@@ -314,8 +333,8 @@ a.nav .badge {
   background: var(--surface);
 }
 .grp.sel {
-  border-color: var(--coral);
-  background: rgba(217, 119, 87, 0.08);
+  border-color: var(--accent);
+  background: rgba(188, 63, 255, 0.08);
 }
 .grp .gname {
   font-size: 15px;
@@ -350,9 +369,9 @@ a.nav .badge {
   font-family: inherit;
 }
 .chip.on {
-  background: var(--coral);
-  border-color: var(--coral);
-  color: #241009;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 .saved {
@@ -400,6 +419,12 @@ a.nav .badge {
   border-radius: 50%;
   background: var(--coral);
   box-shadow: 0 0 12px var(--coral);
+}
+.eyebrow-mark {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 h1.title {
   font-size: clamp(44px, 7vw, 82px);
@@ -608,13 +633,13 @@ button.btn:disabled {
   transform: none;
 }
 button.btn.primary {
-  background: var(--coral);
-  border-color: var(--coral);
-  color: #2a1a12;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 button.btn.primary:hover {
-  background: var(--coral-soft);
+  background: var(--accent-soft);
 }
 button.btn.ghost {
   color: var(--text-dim);
@@ -654,6 +679,44 @@ button.btn.ghost:hover {
   border-radius: 12px;
   box-shadow: var(--shadow);
   font-size: 14px;
+}
+
+/* Global toast stack (errors + status), stacks above the single .toast used by Settings. */
+.toast-stack {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast-stack .toast {
+  position: static;
+  transform: none;
+  left: auto;
+  bottom: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.toast-error {
+  border-color: var(--danger);
+  background: linear-gradient(180deg, rgba(199, 106, 90, 0.18), var(--surface-solid));
+}
+.toast-ok {
+  border-color: var(--sage);
+}
+.toast-x {
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
 }
 
 @media (max-width: 640px) {
@@ -744,5 +807,369 @@ button.btn.ghost:hover {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* ---- Moderation (scam/spam beta) ---- */
+.beta-tag {
+  font-family: var(--font-body), sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--coral-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+.mod-filters {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+.chip {
+  background: rgba(210, 190, 245, 0.06);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 13px;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+.chip.on {
+  background: var(--accent-dim);
+  color: var(--accent-soft);
+  border-color: var(--border-strong);
+}
+.mod-empty {
+  color: var(--text-faint);
+}
+.mod-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 0 0 14px;
+}
+.mod-card.scam {
+  border-left-color: var(--danger);
+}
+.mod-card.spam {
+  border-left-color: var(--coral);
+}
+.mod-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cat {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.cat.scam {
+  color: var(--danger);
+}
+.cat.spam {
+  color: var(--coral-soft);
+}
+.mod-card .conf {
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.mod-reason {
+  margin: 8px 0 6px;
+  color: var(--text);
+}
+.mod-meta {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0 0 4px;
+}
+.mod-signals {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+.mod-card pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg-2);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 6px 0 0;
+}
+.mod-card summary {
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.mod-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.mod-actions button {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mod-actions button.ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+}
+.mod-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.mod-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-faint);
+  text-transform: capitalize;
+}
+
+/* ---- Auth: login screen, role tags, sidebar user ---- */
+.login-wrap {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  padding: 34px 30px;
+  box-shadow: var(--shadow);
+}
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.login-brand img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgba(188, 63, 255, 0.35));
+}
+.login-card h1 {
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.login-sub {
+  color: var(--text-dim);
+  font-size: 13.5px;
+  margin: 4px 0 0;
+}
+.login-card .field input[type="text"],
+.login-card .field input[type="password"] {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 11px 13px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14.5px;
+  outline: none;
+  width: 100%;
+}
+.login-card .field input:focus {
+  border-color: var(--accent);
+}
+.login-err {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 4px 0 14px;
+}
+.login-btn {
+  width: 100%;
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.role-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.role-tag.super_admin {
+  color: var(--accent-soft);
+  border-color: rgba(188, 63, 255, 0.4);
+  background: var(--accent-dim);
+}
+.user-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.user-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.user-name {
+  font-size: 13.5px;
+  color: var(--text);
+}
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 8px 11px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.logout-btn:hover {
+  color: var(--text);
+  background: rgba(224, 209, 178, 0.06);
+}
+
+/* ---- Auth: two-pane login (WebGL brand panel + form) ---- */
+.auth-split {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+}
+.auth-brand {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 20% 10%, #241a3a 0%, #140f22 55%, #0d0a16 100%);
+  border-right: 1px solid var(--border);
+}
+.auth-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.auth-brand-copy {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  bottom: 0;
+  padding: 48px 52px;
+  max-width: 520px;
+  pointer-events: none;
+}
+.auth-brand-copy img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 24px rgba(168, 85, 247, 0.5));
+  margin-bottom: 18px;
+}
+.auth-brand-copy h2 {
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: clamp(28px, 3.2vw, 40px);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: 12px;
+}
+.auth-brand-copy p {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 42ch;
+}
+.auth-form {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+}
+.auth-card h1 {
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: 32px;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.auth-card .login-sub {
+  margin-bottom: 26px;
+}
+.auth-card .field input[type="text"],
+.auth-card .field input[type="password"] {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  width: 100%;
+}
+.auth-card .field input:focus {
+  border-color: var(--accent);
+}
+
+/* Stack to a single column on narrow screens; the WebGL panel becomes a short banner. */
+@media (max-width: 860px) {
+  .auth-split {
+    grid-template-columns: 1fr;
+  }
+  .auth-brand {
+    height: 220px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .auth-brand-copy {
+    padding: 22px 26px;
+  }
+  .auth-brand-copy p {
+    display: none;
   }
 }

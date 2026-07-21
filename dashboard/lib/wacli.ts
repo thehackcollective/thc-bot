@@ -78,12 +78,70 @@ export async function messageCount(jid: string, sinceDays = 3650): Promise<numbe
   }
 }
 
-/** Fire-and-forget backfill; returns immediately. wacli holds the write lock while it runs. */
-export function backfill(jid: string, count = 200, requests = 3): void {
-  const child = spawn(
-    BIN,
-    ["history", "backfill", "--chat", jid, "--count", String(count), "--requests", String(requests), "--wait", "40s", "--idle-exit", "10s"],
-    { detached: true, stdio: "ignore" },
-  );
-  child.unref();
+/** Pull a wacli error message out of captured stdout/stderr. */
+function extractWacliError(buf: string): string | null {
+  const t = buf.trim();
+  if (!t) return null;
+  // wacli emits {success:false,error:"..."} as JSON; fall back to the last log line.
+  for (const line of t.split("\n").reverse()) {
+    const l = line.trim();
+    if (!l) continue;
+    try {
+      const v = JSON.parse(l);
+      if (v && v.success === false && v.error) return String(v.error);
+    } catch {
+      /* not json */
+    }
+    return l; // most recent human-readable line (e.g. permission/auth error)
+  }
+  return null;
+}
+
+/**
+ * Start a backfill. The job is long-running, so we watch the first few seconds for a
+ * fast failure (not authed, no admin permission, group not accessible) and report it;
+ * if it's still alive after the grace window we detach and treat it as running.
+ */
+export function backfill(
+  jid: string,
+  count = 200,
+  requests = 3,
+): Promise<{ ok: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn(
+        BIN,
+        ["history", "backfill", "--chat", jid, "--count", String(count), "--requests", String(requests), "--wait", "40s", "--idle-exit", "10s", "--json"],
+        { detached: true, stdio: ["ignore", "pipe", "pipe"] },
+      );
+    } catch (e) {
+      resolve({ ok: false, error: String((e as Error).message) });
+      return;
+    }
+
+    let buf = "";
+    let settled = false;
+    const done = (r: { ok: boolean; error?: string }) => {
+      if (settled) return;
+      settled = true;
+      resolve(r);
+    };
+
+    child.stdout?.on("data", (d) => (buf += d));
+    child.stderr?.on("data", (d) => (buf += d));
+    // Binary missing (ENOENT) or unspawnable.
+    child.on("error", (e) => done({ ok: false, error: e.message }));
+    child.on("exit", (code) => {
+      if (code && code !== 0) done({ ok: false, error: extractWacliError(buf) || `wacli exited with code ${code}` });
+      else done({ ok: true }); // exited cleanly within the window
+    });
+
+    // Still running after the grace window → healthy; detach and let it finish.
+    setTimeout(() => {
+      if (settled) return;
+      child.unref();
+      done({ ok: true });
+    }, 3500);
+  });
 }

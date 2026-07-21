@@ -116,20 +116,45 @@ The individual commands, if you want to run the bot from the terminal:
 
 ## Configuration
 
-Settings live in two places. The dashboard's **Settings** screen writes them to `data/settings.json`, which the bot reads and which **overrides** anything in `.env`. So you can change most things from the UI without touching files. `.env` holds the defaults and the secret key.
+**Two layers, one rule: secrets + bootstrap live in `.env`; everything tunable lives in the dashboard.**
 
-| Setting | Meaning |
-|---------|---------|
-| `OPENAI_API_KEY` | Your OpenAI key (kept in `.env`, never committed). |
-| `OPENAI_MODEL` | AI model for reading plain-text events (default `gpt-4o-mini` — cheap). |
-| `LUMA_MODEL` | AI model used when adding events to Luma (default `gpt-4o` — more reliable at clicking the right things). |
-| `WA_GROUPS` | Which WhatsApp groups to watch (blank = all). |
-| `INGEST_SINCE_DAYS` | How far back to look on the first scan. |
-| `POLL_INTERVAL_MIN` | How often auto-scan checks for new messages (default 10 minutes). |
-| `LUMA_CALENDAR_URL` | The Luma calendar events get added to — use the calendar's **manage** URL. |
-| `LUMA_DRY_RUN` | `true` = go through the motions but don't actually save to Luma (safe for testing). |
-| `CONFIDENCE_THRESHOLD` | How sure the bot must be before an event reaches the queue (0–1). |
-| `REVIEW_PORT` | Dashboard port (default 4600). |
+The dashboard's **Settings / WhatsApp / Luma** screens write to `data/settings.json`, which the bot reads and which **overrides** `.env`. So the `.env` tunables below are only *first-run defaults* — once you set a value in the dashboard, `settings.json` wins and the matching `.env` line becomes dead. The precedence, in `src/config.ts`, is: `data/settings.json` → `.env` → built-in default.
+
+**Tunables (first-run defaults — normally managed from the dashboard):**
+
+| Setting | Managed in UI | Meaning |
+|---------|---------------|---------|
+| `OPENAI_MODEL` | Settings | AI model for reading plain-text events (default `gpt-4o-mini` — cheap). |
+| `LUMA_MODEL` | Luma | AI model used when adding events to Luma. |
+| `WA_GROUPS` | WhatsApp | Which WhatsApp groups to watch (blank = all). |
+| `INGEST_SINCE_DAYS` | Settings | How far back to look on the first scan. |
+| `POLL_INTERVAL_MIN` | — | How often auto-scan checks for new messages (default 10 min). |
+| `LUMA_CALENDAR_URL` | Luma | Calendar events get added to — use the calendar's **manage** URL. |
+| `LUMA_DRY_RUN` | Luma | `true` = rehearse publishing without saving (safe for testing). |
+| `CONFIDENCE_THRESHOLD` | Settings | How sure the bot must be before an event reaches the queue (0–1). |
+| `MODERATION_ENABLED` / `MODERATION_MODEL` / `MODERATION_THRESHOLD` | Settings | Scam/spam flagging (beta — see below). |
+
+**Env-only (never in the dashboard — must stay in the env file):**
+
+| Setting | File | Meaning |
+|---------|------|---------|
+| `OPENAI_API_KEY` | `.env` | OpenAI key. Secret — never written to `settings.json`, never committed. |
+| `REVIEW_PORT` | `.env` | CLI review-server port (default 4600). |
+| `WACLI_BIN` | `.env` | Path to the `wacli` binary, if not on `PATH` (optional). |
+| `SESSION_SECRET` | `dashboard/.env.local` | Signs dashboard login cookies. Long random string. |
+| `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD` | `dashboard/.env.local` | Seeds the first admin (see below). |
+
+## Signing in (dashboard auth)
+
+The dashboard is protected by a username/password login.
+
+- **First run** seeds one **super admin** from `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD` (`dashboard/.env.local`), *only if the users table is empty*. If you don't set a password, it seeds `admin` / `changeme` and **forces a password change on first login**.
+- The **super admin** can add and remove other admins from the **Admins** page. Regular admins can use everything except user management. The super admin can't be deleted.
+- Sessions are stateless, HMAC-signed cookies (`SESSION_SECRET`); passwords are scrypt-hashed. No external auth service, no extra dependencies.
+- Copy `dashboard/.env.example` to `dashboard/.env.local` and set `SESSION_SECRET` before first use:
+  ```
+  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ```
 
 ### Testing safely
 
@@ -154,6 +179,7 @@ Settings live in two places. The dashboard's **Settings** screen writes them to 
 - **Extract:** Luma links are fetched and parsed directly (JSON-LD/OpenGraph, no AI cost); plain-text events use OpenAI structured outputs with a Zod schema. Low-confidence items dropped; duplicates collapsed by Luma URL or title+date.
 - **Queue:** `better-sqlite3` at `data/thc-bot.sqlite`. Rejected leads are stamped and purged after 30 days.
 - **Publish:** [Stagehand](https://github.com/browserbase/stagehand) drives a local, persistent-login browser through Luma's "add existing event" flow. Success is confirmed by the dialog closing; failures leave the lead `approved` so it can be retried.
-- **Dashboard:** Next.js (App Router), local-only. Streams the bot's output to a shared top-right console via a React context; auto-starts the `watch` loop on load.
+- **Moderation (beta):** every ingested message is scored by cheap regex/unicode heuristics (`src/moderation/heuristics.ts`); only borderline ones cost an LLM call (`src/moderation/classify.ts`). Scam/spam messages are flagged into a review queue — nothing is deleted from WhatsApp. Off by default; enable in Settings.
+- **Dashboard:** Next.js (App Router), local-only. Streams the bot's output to a shared top-right console via a React context; auto-starts the `watch` loop on load. Auth is enforced by `dashboard/middleware.ts` (edge, verify-only) with password/session logic in `dashboard/lib/auth.ts` (Node). The login page uses a Three.js backdrop (`components/LoginScene.tsx`).
 
-Key paths: `src/pipeline.ts` (orchestration), `src/extract/` (event extraction), `src/luma/publish.ts` (calendar automation), `dashboard/` (the console).
+Key paths: `src/pipeline.ts` (orchestration), `src/extract/` (event extraction), `src/moderation/` (scam/spam flagging), `src/luma/publish.ts` (calendar automation), `dashboard/` (the console), `dashboard/lib/auth.ts` (auth).

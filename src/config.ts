@@ -20,6 +20,9 @@ interface Settings {
   lumaDryRun?: boolean;
   lumaModel?: string;
   pollIntervalMinutes?: number;
+  moderationEnabled?: boolean;
+  moderationModel?: string;
+  moderationThreshold?: number;
 }
 
 function loadSettings(): Settings {
@@ -47,6 +50,11 @@ function settingsFields(s: Settings) {
     lumaDryRun: s.lumaDryRun ?? process.env.LUMA_DRY_RUN === "1",
     lumaModel: s.lumaModel || process.env.LUMA_MODEL || "gpt-4o-mini",
     pollIntervalMinutes: s.pollIntervalMinutes ?? Number(process.env.POLL_INTERVAL_MIN || "10"),
+    // Moderation beta: scam/spam detection over raw messages. Off by default.
+    moderationEnabled: s.moderationEnabled ?? process.env.MODERATION_ENABLED === "1",
+    moderationModel:
+      s.moderationModel || process.env.MODERATION_MODEL || s.openaiModel || process.env.OPENAI_MODEL || "gpt-4o-mini",
+    moderationThreshold: s.moderationThreshold ?? Number(process.env.MODERATION_THRESHOLD || "0.6"),
   };
 }
 

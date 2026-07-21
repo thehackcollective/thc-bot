@@ -85,6 +85,43 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <div className="panel">
+        <h3>
+          Moderation <span className="beta-tag">beta</span>
+        </h3>
+        <p className="hint">
+          Flag scam/spam messages (account resale, fake deals) into the Moderation queue. Detection
+          only — nothing is deleted from WhatsApp.
+        </p>
+        <div className="field">
+          <label>
+            <input
+              type="checkbox"
+              checked={s.moderationEnabled}
+              onChange={(e) => save({ moderationEnabled: e.target.checked })}
+              style={{ marginRight: 8 }}
+            />
+            Enable scam/spam flagging
+          </label>
+        </div>
+        <div className="field">
+          <label>Flag threshold — {Math.round(s.moderationThreshold * 100)}%</label>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={s.moderationThreshold}
+            onChange={(e) => setS({ ...s, moderationThreshold: Number(e.target.value) })}
+            onMouseUp={(e) => save({ moderationThreshold: Number((e.target as HTMLInputElement).value) })}
+            onTouchEnd={(e) => save({ moderationThreshold: Number((e.target as HTMLInputElement).value) })}
+          />
+          <small style={{ color: "var(--text-faint)", fontSize: 12.5 }}>
+            Borderline messages the model scores below this are not flagged. Obvious spam is always flagged.
+          </small>
+        </div>
+      </div>
+
       {saved && <div className="toast">✓ Saved</div>}
     </>
   );
