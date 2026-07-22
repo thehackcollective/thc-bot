@@ -7,8 +7,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Settings that unlock high-impact, hard-to-undo behaviour: `lumaCalendarUrl` retargets
-// the live community calendar. Only a super admin may change these.
-const SUPER_ADMIN_FIELDS: (keyof Settings)[] = ["lumaCalendarUrl"];
+// the live community calendar; `lumaDryRun: false` enables live calendar writes.
+// Only a super admin may change these.
+const SUPER_ADMIN_FIELDS: (keyof Settings)[] = ["lumaCalendarUrl", "lumaDryRun"];
 
 // Middleware requires a session for /api/settings, but not the super_admin role. Re-verify
 // against the DB (the cookie role can be stale) before applying sensitive changes.
