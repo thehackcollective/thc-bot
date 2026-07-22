@@ -20,10 +20,6 @@ interface Settings {
   lumaDryRun?: boolean;
   lumaModel?: string;
   pollIntervalMinutes?: number;
-  moderationEnabled?: boolean;
-  moderationModel?: string;
-  moderationThreshold?: number;
-  moderationActionsEnabled?: boolean;
 }
 
 function loadSettings(): Settings {
@@ -51,15 +47,6 @@ function settingsFields(s: Settings) {
     lumaDryRun: s.lumaDryRun ?? process.env.LUMA_DRY_RUN === "1",
     lumaModel: s.lumaModel || process.env.LUMA_MODEL || "gpt-4o-mini",
     pollIntervalMinutes: s.pollIntervalMinutes ?? Number(process.env.POLL_INTERVAL_MIN || "10"),
-    // Moderation beta: scam/spam detection over raw messages. Off by default.
-    moderationEnabled: s.moderationEnabled ?? process.env.MODERATION_ENABLED === "1",
-    moderationModel:
-      s.moderationModel || process.env.MODERATION_MODEL || s.openaiModel || process.env.OPENAI_MODEL || "gpt-4o-mini",
-    moderationThreshold: s.moderationThreshold ?? Number(process.env.MODERATION_THRESHOLD || "0.6"),
-    // Gate for irreversible WhatsApp writes (delete message / remove member). Off unless
-    // explicitly turned on in the dashboard; the bot itself never triggers these.
-    moderationActionsEnabled:
-      s.moderationActionsEnabled ?? process.env.MODERATION_ACTIONS_ENABLED === "1",
   };
 }
 
@@ -67,10 +54,9 @@ export const config = {
   openaiApiKey: req("OPENAI_API_KEY"),
   ...settingsFields(loadSettings()),
   reviewPort: Number(process.env.REVIEW_PORT || "4600"),
-  // Loopback-only receiver for `wacli sync --webhook` (live moderation in watch mode).
+  // Loopback-only liveness endpoint the dashboard polls in watch mode.
   webhookPort: Number(process.env.WA_WEBHOOK_PORT || "4610"),
   dataDir: "data",
-  actionTokenPath: "data/.action-token",
   dbPath: "data/thc-bot.sqlite",
   settingsPath: SETTINGS_PATH,
   lumaProfileDir: ".luma-profile",

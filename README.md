@@ -132,7 +132,6 @@ The dashboard's **Settings / WhatsApp / Luma** screens write to `data/settings.j
 | `LUMA_CALENDAR_URL` | Luma | Calendar events get added to — use the calendar's **manage** URL. |
 | `LUMA_DRY_RUN` | Luma | `true` = rehearse publishing without saving (safe for testing). |
 | `CONFIDENCE_THRESHOLD` | Settings | How sure the bot must be before an event reaches the queue (0–1). |
-| `MODERATION_ENABLED` / `MODERATION_MODEL` / `MODERATION_THRESHOLD` | Settings | Scam/spam flagging (beta — see below). |
 
 **Env-only (never in the dashboard — must stay in the env file):**
 
@@ -179,7 +178,6 @@ The dashboard is protected by a username/password login.
 - **Extract:** Luma links are fetched and parsed directly (JSON-LD/OpenGraph, no AI cost); plain-text events use OpenAI structured outputs with a Zod schema. Low-confidence items dropped; duplicates collapsed by Luma URL or title+date.
 - **Queue:** `better-sqlite3` at `data/thc-bot.sqlite`. Rejected leads are stamped and purged after 30 days.
 - **Publish:** [Stagehand](https://github.com/browserbase/stagehand) drives a local, persistent-login browser through Luma's "add existing event" flow. Success is confirmed by the dialog closing; failures leave the lead `approved` so it can be retried.
-- **Moderation (beta):** every ingested message is scored by cheap regex/unicode heuristics (`src/moderation/heuristics.ts`); only borderline ones cost an LLM call (`src/moderation/classify.ts`). Scam/spam messages are flagged into a review queue — nothing is deleted from WhatsApp. Off by default; enable in Settings.
 - **Dashboard:** Next.js (App Router), local-only. Streams the bot's output to a shared top-right console via a React context; auto-starts the `watch` loop on load. Auth is enforced by `dashboard/middleware.ts` (edge, verify-only) with password/session logic in `dashboard/lib/auth.ts` (Node). The login page uses a Three.js backdrop (`components/LoginScene.tsx`).
 
-Key paths: `src/pipeline.ts` (orchestration), `src/extract/` (event extraction), `src/moderation/` (scam/spam flagging), `src/luma/publish.ts` (calendar automation), `dashboard/` (the console), `dashboard/lib/auth.ts` (auth).
+Key paths: `src/pipeline.ts` (orchestration), `src/extract/` (event extraction), `src/luma/publish.ts` (calendar automation), `dashboard/` (the console), `dashboard/lib/auth.ts` (auth).

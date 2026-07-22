@@ -18,11 +18,6 @@ export const ILuma = () => (
     <circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.5 2" />
   </svg>
 );
-export const IShield = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-    <path d="M12 3l7 3v5c0 4.5-3 8-7 9.5C8 19 5 15.5 5 11V6l7-3Z" /><path d="M9.5 12l1.8 1.8L15 10" />
-  </svg>
-);
 export const IUsers = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
     <circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /><path d="M16 5.2a3 3 0 0 1 0 5.6M18 19c0-2.2-1-3.9-2.6-4.7" />
