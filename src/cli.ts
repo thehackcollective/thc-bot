@@ -1,11 +1,6 @@
+import { spawn } from "node:child_process";
 import { config, reloadConfig } from "./config.js";
-import { SyncBroker } from "./ingest/sync-broker.js";
-import {
-  clearActionToken,
-  newActionToken,
-  newWebhookSecret,
-  startWebhookServer,
-} from "./ingest/webhook.js";
+import { startHealthServer } from "./ingest/health.js";
 import { runPipeline } from "./pipeline.js";
 import { startReviewServer } from "./review/server.js";
 import { exportLeads } from "./export.js";
@@ -21,10 +16,8 @@ async function main() {
     case "ingest":
     case "extract": {
       // Ingest + extract are one pipeline; all three aliases run it.
-      const { scanned, inserted, flagged } = await runPipeline();
-      console.log(
-        `Done. Scanned ${scanned} msg(s), ${inserted} new lead(s) queued${flagged ? `, ${flagged} flagged` : ""}.`,
-      );
+      const { scanned, inserted } = await runPipeline();
+      console.log(`Done. Scanned ${scanned} msg(s), ${inserted} new lead(s) queued.`);
       break;
     }
     case "review":
@@ -60,36 +53,26 @@ async function main() {
     case "watch": {
       // Continuously ingest WhatsApp + scan for events on an interval.
       const intervalMs = Math.max(1, config.pollIntervalMinutes) * 60_000;
-      // Live moderation: wacli POSTs each incoming message to a loopback server, so
-      // scams are flagged in seconds instead of waiting for the next scan. The timer
-      // still runs — it does event extraction and backfills anything missed.
-      const secret = newWebhookSecret();
-      const actionToken = newActionToken();
-      // A following sync holds wacli's exclusive store lock, so moderation actions
-      // from the dashboard have to go through the broker, which pauses sync for them.
-      const broker = new SyncBroker([
-        "sync",
-        "--follow",
-        "--webhook",
-        `http://127.0.0.1:${config.webhookPort}/wa`,
-        "--webhook-secret",
-        secret,
-        "--webhook-allow-private", // the receiver is 127.0.0.1 by design
-      ]);
-      const { server, url } = startWebhookServer(secret, { broker, actionToken });
+      // A following sync keeps wacli's local store fresh in the background; the timer
+      // reads from that store, extracts events, and backfills anything missed while
+      // this process was down.
+      const sync = spawn(process.env.WACLI_BIN || "wacli", ["sync", "--follow"], {
+        stdio: "ignore",
+      });
+      sync.on("error", (e) => console.error("wacli sync failed to start:", e.message));
+      const { server, url } = startHealthServer();
       console.log(
-        `Watch mode: live moderation on ${url}, scan every ${config.pollIntervalMinutes} min. Ctrl+C to stop.`,
+        `Watch mode: health on ${url}, scan every ${config.pollIntervalMinutes} min. Ctrl+C to stop.`,
       );
-      broker.start();
 
       const tick = async () => {
         try {
           // Pick up Settings-page changes (groups, threshold, etc.) written to
           // settings.json since the process started, before each scan.
           reloadConfig();
-          const { scanned, inserted, flagged } = await runPipeline();
+          const { scanned, inserted } = await runPipeline();
           console.log(
-            `[${new Date().toISOString()}] scanned ${scanned} msg(s), ${inserted} new lead(s)${flagged ? `, ${flagged} flagged` : ""}.`,
+            `[${new Date().toISOString()}] scanned ${scanned} msg(s), ${inserted} new lead(s).`,
           );
         } catch (e) {
           console.error("scan error:", e);
@@ -99,8 +82,7 @@ async function main() {
       const timer = setInterval(tick, intervalMs);
       const stop = () => {
         clearInterval(timer);
-        broker.stop();
-        clearActionToken();
+        sync.kill();
         server.close();
         process.exit(0);
       };

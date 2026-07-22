@@ -12,11 +12,6 @@ export interface Settings {
   ingestSinceDays: number;
   lumaCalendarUrl: string;
   lumaDryRun: boolean; // fill Luma form but don't submit
-  moderationEnabled: boolean; // scam/spam detection beta
-  moderationThreshold: number; // 0..1 min confidence to keep an LLM flag
-  // Safety gate. When false the dashboard can only flag; no WhatsApp writes are
-  // possible at all. Deleting a message and removing a member are irreversible.
-  moderationActionsEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -26,9 +21,6 @@ export const DEFAULT_SETTINGS: Settings = {
   ingestSinceDays: 30,
   lumaCalendarUrl: "",
   lumaDryRun: false,
-  moderationEnabled: false,
-  moderationThreshold: 0.6,
-  moderationActionsEnabled: false,
 };
 
 export function readSettings(): Settings {
