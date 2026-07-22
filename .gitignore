@@ -1,0 +1,27 @@
+node_modules/
+dist/
+
+# Next.js build output (dashboard)
+.next/
+dashboard/.next/
+
+# Local editor / tooling config
+.claude/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# WhatsApp / wacli local session + message DB
+.wacli/
+*.session
+wa-store/
+
+# Local data (review queue, browser profile)
+data/
+.luma-profile/
+
+# Logs / OS
+*.log
+.DS_Store

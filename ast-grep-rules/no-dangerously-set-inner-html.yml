@@ -1,0 +1,10 @@
+id: no-dangerously-set-inner-html
+language: tsx
+severity: error
+message: "Avoid dangerouslySetInnerHTML — it bypasses React's built-in XSS protection."
+note: "Render text as children, or sanitize the HTML with a vetted sanitizer if raw markup is truly required."
+rule:
+  kind: jsx_attribute
+  has:
+    kind: property_identifier
+    regex: "^dangerouslySetInnerHTML$"
