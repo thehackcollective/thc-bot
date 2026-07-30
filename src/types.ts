@@ -30,6 +30,13 @@ export interface EventLead {
   confidence: number; // 0..1 model confidence this is a real event lead
 }
 
+/** An extracted lead plus the WhatsApp message it came from, before it's queued. */
+export interface ExtractedLead extends EventLead {
+  sourceChat: string;
+  sourceMsgId: string;
+  sourceText: string;
+}
+
 export type LeadStatus = "pending" | "approved" | "rejected" | "published";
 
 export interface QueuedLead extends EventLead {

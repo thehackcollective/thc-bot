@@ -1,15 +1,19 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { WaChat, WaMessage } from "../types.js";
+import { normalizeChat, normalizeMessage, parseJsonOutput } from "./wacli-parse.js";
 
 const execFileP = promisify(execFile);
 
 const WACLI_BIN = process.env.WACLI_BIN || "wacli";
 
+// Parsing/normalization lives in ./wacli-parse.ts so the dashboard shares it.
+export { normalizeChat, normalizeMessage, parseJsonOutput } from "./wacli-parse.js";
+
 /**
  * Run wacli in read-only mode with --json and parse its output.
  * wacli emits human progress on stderr, data on stdout (per docs), so stdout
- * is either a JSON array or newline-delimited JSON. We handle both.
+ * is either a JSON array or newline-delimited JSON. parseJsonOutput handles both.
  */
 async function wacli(args: string[]): Promise<any[]> {
   const { stdout } = await execFileP(WACLI_BIN, [...args, "--json"], {
@@ -17,100 +21,6 @@ async function wacli(args: string[]): Promise<any[]> {
     env: { ...process.env, WACLI_READONLY: "1" },
   });
   return parseJsonOutput(stdout);
-}
-
-export function parseJsonOutput(stdout: string): any[] {
-  const trimmed = stdout.trim();
-  if (!trimmed) return [];
-  // wacli wraps results in {success, data, error}. Handle that plus loose shapes.
-  try {
-    const v = JSON.parse(trimmed);
-    if (Array.isArray(v)) return v;
-    if (v && v.success === false) throw new Error(`wacli error: ${v.error ?? "unknown"}`);
-    // chats list -> data: [...]; messages list -> data: { messages: [...] }.
-    const d = v?.data;
-    if (Array.isArray(d)) return d;
-    if (d && typeof d === "object") {
-      for (const k of ["messages", "chats", "items", "results"]) {
-        if (Array.isArray(d[k])) return d[k];
-      }
-    }
-    if (Array.isArray(v?.items)) return v.items;
-    if (Array.isArray(v?.messages)) return v.messages;
-    if (Array.isArray(v?.chats)) return v.chats;
-    return [v];
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith("wacli error")) throw e;
-    // Fall back to NDJSON. Parse line-by-line and drop any malformed line (e.g. a
-    // stray wacli progress indicator on stdout) so one bad line doesn't abort the
-    // whole message fetch for a group.
-    return trimmed
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .flatMap((l) => {
-        try {
-          return [JSON.parse(l)];
-        } catch {
-          return [];
-        }
-      });
-  }
-}
-
-// wacli JSON field names are not documented; normalize the likely variants.
-function pick<T = string>(o: any, keys: string[], fallback: T | null = null): T | null {
-  for (const k of keys) {
-    if (o[k] !== undefined && o[k] !== null && o[k] !== "") return o[k] as T;
-  }
-  return fallback;
-}
-
-export function normalizeChat(o: any): WaChat {
-  const jid = pick(o, ["jid", "id", "chat_jid", "chatJid"]) || "";
-  return {
-    jid,
-    name: pick(o, ["name", "subject", "title", "display_name"]) || jid,
-    isGroup: o.kind === "group" || jid.endsWith("@g.us") || Boolean(pick(o, ["is_group", "isGroup"], null)),
-  };
-}
-
-export function normalizeMessage(o: any, chatName: string): WaMessage {
-  // wacli uses PascalCase keys (Text, Timestamp, SenderName, ...); keep lowercase fallbacks too.
-  // The two wacli surfaces disagree on names: `messages list` emits ChatJID/MsgID/SenderName,
-  // while the sync webhook emits Chat/ID/PushName for the same fields. Accept both.
-  const rawTs = pick<any>(o, ["Timestamp", "timestamp", "time", "ts", "date", "sent_at"]);
-  let iso: string;
-  if (typeof rawTs === "number") {
-    iso = new Date(rawTs < 1e12 ? rawTs * 1000 : rawTs).toISOString();
-  } else if (rawTs) {
-    iso = new Date(rawTs).toISOString();
-  } else {
-    iso = new Date(0).toISOString();
-  }
-  // Prefer real message text; fall back to media caption. DisplayText is a placeholder like "(message)".
-  const text = pick(o, ["Text", "text", "body", "content", "message"]) ||
-    pick(o, ["MediaCaption", "caption"]) || "";
-  return {
-    id: String(pick(o, ["MsgID", "ID", "id", "msg_id", "message_id", "key_id"]) || ""),
-    chatJid: pick(o, ["ChatJID", "Chat", "chat", "chat_jid", "chatJid", "chatId"]) || "",
-    chatName: pick(o, ["ChatName"]) || chatName,
-    sender:
-      pick(o, [
-        "SenderName",
-        "PushName",
-        "SenderJID",
-        "sender",
-        "sender_jid",
-        "from",
-        "author",
-        "pushname",
-      ]) || "unknown",
-    // JID/phone specifically (not display name) — needed to remove a sender from a group.
-    senderJid: pick(o, ["SenderJID", "sender_jid", "SenderPN", "senderPn", "participant"]) || "",
-    timestamp: iso,
-    text,
-  };
 }
 
 export async function listGroups(filterNames: string[] = []): Promise<WaChat[]> {

@@ -1,25 +1,24 @@
 import "server-only";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { parseJsonOutput } from "@bot/ingest/wacli-parse";
 
 const execFileP = promisify(execFile);
 const BIN = process.env.WACLI_BIN || "wacli";
 
-function parse(stdout: string): any {
-  const t = stdout.trim();
-  if (!t) return null;
-  const v = JSON.parse(t);
-  if (v && v.success === false) throw new Error(v.error || "wacli error");
-  return v?.data ?? v;
-}
-
-async function run(args: string[], timeoutMs = 30000): Promise<any> {
+/**
+ * Always returns a row array. Uses the bot's shared parser (single source of truth)
+ * which unwraps {success,data}, handles the several data shapes, and falls back to
+ * NDJSON — the previous local copy was a strict JSON.parse that threw on a stray
+ * wacli progress line.
+ */
+async function run(args: string[], timeoutMs = 30000): Promise<any[]> {
   const { stdout } = await execFileP(BIN, [...args, "--json"], {
     maxBuffer: 64 * 1024 * 1024,
     timeout: timeoutMs,
     env: { ...process.env, WACLI_READONLY: "1" },
   });
-  return parse(stdout);
+  return parseJsonOutput(stdout);
 }
 
 export interface WaGroup {
@@ -31,8 +30,8 @@ export interface WaGroup {
 }
 
 export async function listGroups(): Promise<WaGroup[]> {
-  const data = (await run(["chats", "list", "--limit", "1000"])) as any[];
-  return (Array.isArray(data) ? data : [])
+  const rows = await run(["chats", "list", "--limit", "1000"]);
+  return rows
     .filter((c) => c.kind === "group" || String(c.jid || "").endsWith("@g.us"))
     .map((c) => ({
       jid: c.jid,
@@ -52,16 +51,17 @@ export interface WaStatus {
 
 export async function status(): Promise<WaStatus> {
   try {
-    // A cheap read proves the store + binary are usable.
-    const chats = (await run(["chats", "list", "--limit", "1"], 8000)) as any[];
+    // A cheap read proves the store + binary are usable: run() throws if wacli fails.
+    await run(["chats", "list", "--limit", "1"], 8000);
     let total: number | null = null;
     try {
-      const d = await run(["store", "stats"], 8000);
+      // `store stats` is a single object, which the shared parser yields as a 1-row array.
+      const [d] = await run(["store", "stats"], 8000);
       total = d?.messages ?? d?.total_messages ?? null;
     } catch {
       /* store stats shape varies; ignore */
     }
-    return { reachable: Array.isArray(chats), totalMessages: total };
+    return { reachable: true, totalMessages: total };
   } catch (e) {
     return { reachable: false, totalMessages: null, error: String((e as Error).message) };
   }
@@ -70,9 +70,12 @@ export async function status(): Promise<WaStatus> {
 export async function messageCount(jid: string, sinceDays = 3650): Promise<number> {
   const after = new Date(Date.now() - sinceDays * 86400_000).toISOString().slice(0, 10);
   try {
-    const d = await run(["messages", "list", "--chat", jid, "--after", after, "--limit", "5000"], 20000);
-    const msgs = d?.messages ?? d ?? [];
-    return Array.isArray(msgs) ? msgs.length : 0;
+    // The shared parser already unwraps data.messages, so this is the message rows.
+    const rows = await run(
+      ["messages", "list", "--chat", jid, "--after", after, "--limit", "5000"],
+      20000,
+    );
+    return rows.length;
   } catch {
     return 0;
   }

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { config } from "../config.js";
-import type { EventLead, WaMessage } from "../types.js";
+import type { ExtractedLead, WaMessage } from "../types.js";
 import { ExtractionSchema } from "./schema.js";
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
@@ -45,11 +45,9 @@ function chunk(messages: WaMessage[]): WaMessage[][] {
   return batches;
 }
 
-export interface ExtractedLead extends EventLead {
-  sourceChat: string;
-  sourceMsgId: string;
-  sourceText: string;
-}
+// Canonical definition lives in ../types.ts (kept dependency-free so the dashboard
+// can import it); re-exported here for the extractor's existing call sites.
+export type { ExtractedLead };
 
 export async function extractEvents(messages: WaMessage[]): Promise<ExtractedLead[]> {
   const out: ExtractedLead[] = [];

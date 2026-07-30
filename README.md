@@ -107,7 +107,6 @@ The individual commands, if you want to run the bot from the terminal:
 |---------|--------------|
 | `npm run run` | Scan WhatsApp once and add new events to the review list. |
 | `npm run watch` | Keep scanning automatically on a schedule (this is what auto-scan uses). |
-| `npm run review` | Open the review dashboard. |
 | `npm run login` | One-time Luma sign-in (saves the session). |
 | `npm run publish` | Add all approved events to the Luma calendar. `npm run publish 5` does just event #5. |
 | `npm run export -- pending` | Save the events to a spreadsheet/Markdown file as a manual backup. |
@@ -138,7 +137,6 @@ The dashboard's **Settings / WhatsApp / Luma** screens write to `data/settings.j
 | Setting | File | Meaning |
 |---------|------|---------|
 | `OPENAI_API_KEY` | `.env` | OpenAI key. Secret — never written to `settings.json`, never committed. |
-| `REVIEW_PORT` | `.env` | CLI review-server port (default 4600). |
 | `WACLI_BIN` | `.env` | Path to the `wacli` binary, if not on `PATH` (optional). |
 | `SESSION_SECRET` | `dashboard/.env.local` | Signs dashboard login cookies. Long random string. |
 | `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD` | `dashboard/.env.local` | Seeds the first admin (see below). |

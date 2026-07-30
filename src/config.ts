@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { readFileSync, existsSync } from "node:fs";
+import { DEFAULT_SETTINGS, type PartialSettings } from "./shared/settings.js";
 
 function req(name: string): string {
   const v = process.env[name];
@@ -10,19 +11,9 @@ function req(name: string): string {
 const SETTINGS_PATH = "data/settings.json";
 
 // Settings written by the dashboard override .env defaults, so UI changes take effect
-// without editing files. Missing/invalid file => pure env behaviour.
-interface Settings {
-  groups?: string[];
-  openaiModel?: string;
-  confidenceThreshold?: number;
-  ingestSinceDays?: number;
-  lumaCalendarUrl?: string;
-  lumaDryRun?: boolean;
-  lumaModel?: string;
-  pollIntervalMinutes?: number;
-}
-
-function loadSettings(): Settings {
+// without editing files. Missing/invalid file => pure env behaviour. The Settings shape
+// is shared with the dashboard (see shared/settings.ts) so the two can't drift.
+function loadSettings(): PartialSettings {
   try {
     if (existsSync(SETTINGS_PATH)) return JSON.parse(readFileSync(SETTINGS_PATH, "utf8"));
   } catch {
@@ -33,19 +24,19 @@ function loadSettings(): Settings {
 
 // Fields that the dashboard Settings page can override at runtime. Computed from
 // settings.json + env so both the initial build and reloadConfig() stay in sync.
-function settingsFields(s: Settings) {
+function settingsFields(s: PartialSettings) {
   const envGroups = (process.env.WA_GROUPS || "")
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
   return {
-    openaiModel: s.openaiModel || process.env.OPENAI_MODEL || "gpt-4o-mini",
+    openaiModel: s.openaiModel || process.env.OPENAI_MODEL || DEFAULT_SETTINGS.openaiModel,
     waGroups: s.groups && s.groups.length ? s.groups : envGroups,
     confidenceThreshold: s.confidenceThreshold ?? Number(process.env.CONFIDENCE_THRESHOLD || "0.5"),
     ingestSinceDays: s.ingestSinceDays ?? Number(process.env.INGEST_SINCE_DAYS || "14"),
     lumaCalendarUrl: s.lumaCalendarUrl || process.env.LUMA_CALENDAR_URL || "",
     lumaDryRun: s.lumaDryRun ?? process.env.LUMA_DRY_RUN === "1",
-    lumaModel: s.lumaModel || process.env.LUMA_MODEL || "gpt-4o-mini",
+    lumaModel: s.lumaModel || process.env.LUMA_MODEL || DEFAULT_SETTINGS.lumaModel,
     pollIntervalMinutes: s.pollIntervalMinutes ?? Number(process.env.POLL_INTERVAL_MIN || "10"),
   };
 }
@@ -53,7 +44,6 @@ function settingsFields(s: Settings) {
 export const config = {
   openaiApiKey: req("OPENAI_API_KEY"),
   ...settingsFields(loadSettings()),
-  reviewPort: Number(process.env.REVIEW_PORT || "4600"),
   // Loopback-only liveness endpoint the dashboard polls in watch mode.
   webhookPort: Number(process.env.WA_WEBHOOK_PORT || "4610"),
   dataDir: "data",

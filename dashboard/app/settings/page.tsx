@@ -71,7 +71,7 @@ export default function SettingsPage() {
 
       <div className="panel">
         <h3>Ingestion</h3>
-        <p className="hint">How far back the bot reads when scanning WhatsApp.</p>
+        <p className="hint">How far back the bot reads when scanning WhatsApp, and how often.</p>
         <div className="field">
           <label>Look-back window (days)</label>
           <input
@@ -82,6 +82,20 @@ export default function SettingsPage() {
             onChange={(e) => setS({ ...s, ingestSinceDays: Number(e.target.value) })}
             onBlur={() => save({ ingestSinceDays: s.ingestSinceDays })}
           />
+        </div>
+        <div className="field">
+          <label>Auto-scan interval (minutes)</label>
+          <input
+            type="number"
+            min={1}
+            max={1440}
+            value={s.pollIntervalMinutes}
+            onChange={(e) => setS({ ...s, pollIntervalMinutes: Number(e.target.value) })}
+            onBlur={() => save({ pollIntervalMinutes: s.pollIntervalMinutes })}
+          />
+          <small style={{ color: "var(--text-faint)", fontSize: 12.5 }}>
+            How often watch mode re-checks the groups. Applies when the bot is next restarted.
+          </small>
         </div>
       </div>
 

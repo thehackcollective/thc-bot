@@ -2,7 +2,6 @@ import { spawn } from "node:child_process";
 import { config, reloadConfig } from "./config.js";
 import { startHealthServer } from "./ingest/health.js";
 import { runPipeline } from "./pipeline.js";
-import { startReviewServer } from "./review/server.js";
 import { exportLeads } from "./export.js";
 import { getLead, listLeads, setStatus } from "./queue/store.js";
 import { login, publishLead } from "./luma/publish.js";
@@ -20,10 +19,6 @@ async function main() {
       console.log(`Done. Scanned ${scanned} msg(s), ${inserted} new lead(s) queued.`);
       break;
     }
-    case "review":
-      startReviewServer();
-      await new Promise<never>(() => {}); // keep process alive
-      break;
     case "export": {
       const status = (rest[0] as LeadStatus) || "pending";
       exportLeads(status);
@@ -98,10 +93,11 @@ async function main() {
       console.log(`thc-bot commands:
   run        ingest WhatsApp + extract event leads into the review queue
   watch      keep syncing WhatsApp and scanning on an interval (auto mode)
-  review     start the review dashboard (approve/reject/publish)
   publish    [id]  publish approved lead(s) to Luma via browser
   export     [status]  dump leads to CSV + Markdown (manual-upload fallback)
-  login      one-time interactive Luma sign-in (persists session)`);
+  login      one-time interactive Luma sign-in (persists session)
+
+Review/approve leads in the dashboard (the only review UI): cd dashboard && npm run dev`);
   }
 }
 

@@ -19,7 +19,7 @@ export function hasLumaUrl(text: string): boolean {
   return findLumaUrls(text).length > 0;
 }
 
-interface LumaFields {
+export interface LumaFields {
   title: string | null;
   description: string | null;
   startDate: string | null;
@@ -30,7 +30,7 @@ interface LumaFields {
 }
 
 /** Luma descriptions are full event pages; keep a tidy 1-2 sentence summary for the card. */
-function summarize(text: string | null, max = 220): string | null {
+export function summarize(text: string | null, max = 220): string | null {
   if (!text) return null;
   const flat = text.replace(/\s+/g, " ").trim();
   if (flat.length <= max) return flat;
@@ -42,7 +42,7 @@ function summarize(text: string | null, max = 220): string | null {
 }
 
 /** Pull JSON-LD Event objects out of raw HTML (Luma emits schema.org Event blocks). */
-function parseJsonLd(html: string): LumaFields | null {
+export function parseJsonLd(html: string): LumaFields | null {
   const blocks = html.matchAll(
     /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
   );

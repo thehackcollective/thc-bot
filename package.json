@@ -13,13 +13,14 @@
     "extract": "tsx src/cli.ts extract",
     "run": "tsx src/cli.ts run",
     "watch": "tsx src/cli.ts watch",
-    "review": "tsx src/cli.ts review",
     "login": "tsx src/cli.ts login",
     "publish": "tsx src/cli.ts publish",
     "export": "tsx src/cli.ts export",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "npx --yes oxlint@1.74.0 src dashboard",
-    "lint:ast": "npx --yes @ast-grep/cli@0.44.1 scan"
+    "lint:ast": "npx --yes --package @ast-grep/cli@0.44.1 ast-grep scan"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^3.0.0",
@@ -32,7 +33,8 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
   },
   "allowScripts": {
     "better-sqlite3@11.10.0": true,
