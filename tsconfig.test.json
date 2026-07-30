@@ -1,0 +1,11 @@
+{
+  // Typechecks the unit tests alongside src. The base config sets rootDir: "src" for the
+  // build output, so tests need their own program with a wider root.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
+}
