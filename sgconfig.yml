@@ -1,0 +1,3 @@
+# ast-grep project config. Rules live in ast-grep-rules/ and run via `ast-grep scan`.
+ruleDirs:
+  - ast-grep-rules
