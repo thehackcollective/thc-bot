@@ -15,7 +15,9 @@ export async function POST(req: Request) {
     } else if (action === "approve") {
       setStatus(lead.id, "approved");
     } else if (action === "publish") {
-      setStatus(lead.id, "approved");
+      // Same as /api/publish: don't demote an already-published lead, since a
+      // failed re-publish would otherwise lose the fact that it's on Luma.
+      if (lead.status !== "published") setStatus(lead.id, "approved");
       // Fire-and-forget publish. spawnPublish holds an in-process lock, so a
       // concurrent publish for the same lead is refused rather than launching a
       // second browser that would duplicate the calendar entry.

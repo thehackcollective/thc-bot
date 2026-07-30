@@ -12,7 +12,9 @@ export async function POST(req: Request) {
   const { id } = (await req.json()) as { id: number };
   const lead = getLead(Number(id));
   if (!lead) return new Response("lead not found", { status: 404 });
-  setStatus(lead.id, "approved");
+  // Re-publishing an already-published lead must not clear its published state:
+  // only the child marks a lead published, and it does so on a real successful add.
+  if (lead.status !== "published") setStatus(lead.id, "approved");
 
   // Guard: refuse a second concurrent publish for the same lead so we never open
   // two browsers and add the event to the calendar twice.
