@@ -83,6 +83,47 @@ jobs:
         run: npx tsc --noEmit
         working-directory: dashboard
 
+  test:
+    name: test
+    needs: detect
+    if: needs.detect.outputs.app == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install bot deps
+        run: npm ci
+      # Vitest unit tests for the pure parsing/normalization helpers.
+      - name: Unit tests
+        run: npm test
+
+  build-dashboard:
+    name: build dashboard
+    needs: detect
+    if: needs.detect.outputs.dashboard == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install dashboard deps
+        run: npm ci
+        working-directory: dashboard
+      # Catches Next-specific breakage a bare tsc misses (e.g. resolving the bot's
+      # shared modules from outside the Next root).
+      - name: next build
+        run: npx next build
+        working-directory: dashboard
+        env:
+          SESSION_SECRET: ci-build-only-not-a-real-secret
+
   react-doctor:
     name: react-doctor
     needs: detect
